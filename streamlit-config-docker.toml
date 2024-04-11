@@ -1,0 +1,169 @@
+[logger]
+
+# Level of logging: 'error', 'warning', 'info', or 'debug'.
+# Default: 'info'
+level = "info"
+
+# String format for logging messages. If logger.datetimeFormat is set,
+# logger messages will default to `%(asctime)s.%(msecs)03d %(message)s`. See
+# Python's documentation for available attributes:
+# https://docs.python.org/2.6/library/logging.html#formatter-objects
+# Default: "%(asctime)s %(message)s"
+messageFormat = "%(asctime)s %(message)s"
+
+[client]
+
+# Controls whether uncaught app exceptions and deprecation warnings
+# are displayed in the browser. By default, this is set to True and
+# Streamlit displays app exceptions and associated tracebacks, and
+# deprecation warnings, in the browser.
+#
+# If set to False, deprecation warnings and full exception messages
+# will print to the console only. Exceptions will still display in the
+# browser with a generic error message. For now, the exception type and
+# traceback show in the browser also, but they will be removed in the
+# future.
+# Default: true
+showErrorDetails = false
+
+# Change the visibility of items in the toolbar, options menu,
+# and settings dialog (top right of the app).
+# Allowed values:
+# * "auto"      : Show the developer options if the app is accessed through
+#                 localhost or through Streamlit Community Cloud as a developer.
+#                 Hide them otherwise.
+# * "developer" : Show the developer options.
+# * "viewer"    : Hide the developer options.
+# * "minimal"   : Show only options set externally (e.g. through
+#                 Streamlit Community Cloud) or through st.set_page_config.
+#                 If there are no options left, hide the menu.
+# Default: "auto"
+toolbarMode = "auto"
+
+# Controls whether the default sidebar page navigation in a multipage app is
+# displayed.
+# Default: true
+showSidebarNavigation = true
+
+[server]
+
+# List of folders that should not be watched for changes. This
+# impacts both "Run on Save" and @st.cache.
+# Relative paths will be taken as relative to the current working directory.
+# Example: ['/home/user1/env', 'relative/path/to/folder']
+# Default: []
+folderWatchBlacklist = []
+
+# Change the type of file watcher used by Streamlit, or turn it off
+# completely.
+# Allowed values:
+# * "auto"     : Streamlit will attempt to use the watchdog module, and
+#                falls back to polling if watchdog is not available.
+# * "watchdog" : Force Streamlit to use the watchdog module.
+# * "poll"     : Force Streamlit to always use polling.
+# * "none"     : Streamlit will not watch files.
+# Default: "auto"
+fileWatcherType = "auto"
+
+# If false, will attempt to open a browser window on start.
+# Default: false unless (1) we are on a Linux box where DISPLAY is unset, or
+# (2) we are running in the Streamlit Atom plugin.
+headless = true
+
+# Automatically rerun script when the file is modified on disk.
+# Default: false
+runOnSave = true
+
+# The address where the server will listen for client and browser
+# connections. Use this if you want to bind the server to a specific address.
+# If set, the server will only be accessible from this address, and not from
+# any aliases (like localhost).
+# Default: (unset)
+address = "0.0.0.0"
+
+# The port where the server will listen for browser connections.
+# Don't use port 3000 which is reserved for internal development.
+# Default: 8501
+port = 8501
+
+# The base path for the URL where Streamlit should be served from.
+# Default: ""
+baseUrlPath = ""
+
+# Enables support for Cross-Origin Resource Sharing (CORS) protection, for
+# added security.
+# Due to conflicts between CORS and XSRF, if `server.enableXsrfProtection` is
+# on and `server.enableCORS` is off at the same time, we will prioritize
+# `server.enableXsrfProtection`.
+# Default: true
+enableCORS = true
+
+# Enables support for Cross-Site Request Forgery (XSRF) protection, for added
+# security.
+# Due to conflicts between CORS and XSRF, if `server.enableXsrfProtection` is
+# on and `server.enableCORS` is off at the same time, we will prioritize
+# `server.enableXsrfProtection`.
+# Default: true
+enableXsrfProtection = true
+
+# Max size, in megabytes, for files uploaded with the file_uploader.
+# Default: 200
+maxUploadSize = 200
+
+# Max size, in megabytes, of messages that can be sent via the WebSocket
+# connection.
+# Default: 200
+maxMessageSize = 200
+
+# Enables support for websocket compression.
+# Default: false
+enableWebsocketCompression = true
+
+# Enable serving files from a `static` directory in the running app's
+# directory.
+# Default: false
+enableStaticServing = false
+
+# Server certificate file for connecting via HTTPS.
+# Must be set at the same time as "server.sslKeyFile".
+# ['DO NOT USE THIS OPTION IN A PRODUCTION ENVIRONMENT. It has not gone through
+# security audits or performance tests. For the production environment, we
+# recommend performing SSL termination by the load balancer or the reverse
+# proxy.']
+# sslCertFile =
+
+# Cryptographic key file for connecting via HTTPS.
+# Must be set at the same time as "server.sslCertFile".
+# ['DO NOT USE THIS OPTION IN A PRODUCTION ENVIRONMENT. It has not gone through
+# security audits or performance tests. For the production environment, we
+# recommend performing SSL termination by the load balancer or the reverse
+# proxy.']
+# sslKeyFile =
+
+[browser]
+
+# Internet address where users should point their browsers in order to
+# connect to the app. Can be IP address or DNS name and path.
+# This is used to:
+# - Set the correct URL for CORS and XSRF protection purposes.
+# - Show the URL on the terminal
+# - Open the browser
+# Default: "localhost"
+serverAddress = "localhost"
+
+# Whether to send usage statistics to Streamlit.
+# Default: true
+gatherUsageStats = false
+
+# Port where users should point their browsers in order to connect to the
+# app.
+# This is used to:
+# - Set the correct URL for XSRF protection purposes.
+# - Show the URL on the terminal (part of `streamlit run`).
+# - Open the browser automatically (part of `streamlit run`).
+# This option is for advanced use cases. To change the port of your app, use
+# `server.Port` instead. Don't use port 3000 which is reserved for internal
+# development.
+# Default: whatever value is set in server.port.
+serverPort = 8501
+

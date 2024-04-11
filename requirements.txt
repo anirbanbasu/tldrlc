@@ -2,9 +2,9 @@ async-timeout==4.0.3
 chevron==0.14.0
 exceptiongroup==1.2.0
 jsonpatch==1.33
-langfuse==2.24.0
+langfuse==2.25.0
 llama-index==0.10.28
-llama-index-embeddings-cohere==0.1.5
+llama-index-embeddings-cohere==0.1.7
 llama-index-embeddings-ollama==0.1.2
 llama-index-graph-stores-neo4j==0.1.4
 llama-index-llms-cohere==0.1.6

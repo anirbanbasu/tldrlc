@@ -1,3 +1,5 @@
+[![Pylint](https://github.com/anirbanbasu/tldrlc/actions/workflows/pylint.yml/badge.svg)](https://github.com/anirbanbasu/tldrlc/actions/workflows/pylint.yml)
+
 # Too Long, Didn't Read, Let's Chat (TLDRLC)
 
 TLDRLC is an experimental chatbot prototype that allows users to chat with various data sources. This chatbot utilises a _knowledge graph_ based _retrieval augmented generation (RAG)_, where the knowledge graph, itself, is built using a _large language model (LLM)_.
@@ -6,7 +8,7 @@ TLDRLC is an experimental software. It is not associated with any, and should no
 
 ## Installation
 
-If you want to run this app in a Docker container then you can skip the installation of Python dependencies. The process of running the app with Docker is described below in the usage section. You may still need to setup the language models, documents, index and graph storage.
+If you want to run this app in a Docker container then you can skip the installation of Python dependencies. The process of running the app with Docker is described below in the usage section. You may still need to setup the language model provider, and the storages for documents, indices and graphs.
 
 ### Python dependencies
 
@@ -35,19 +37,19 @@ pip list --not-required --format=freeze > requirements.txt
 
 Note that while `pip freeze` outputs all the installed packages (in your virtual environment), `pip list --not-required --format=freeze` outputs only those that you installed, excluding those that were automatically retrieved as dependencies of those packages.
 
-### Language models, documents, index and graph storage
+### Language model providers, documents, index and graph storage
 
-#### Supported language models
+#### Supported language model providers
 
-You can specify the language model to use by using the environment variable `LLM_PROVIDER`, which defaults to `Ollama`, if not specified. The supported language models are:
+You can specify the language model provider to use by using the environment variable `LLM_PROVIDER`, which defaults to `Ollama`, if not specified. The supported language model providers are:
 
 1. Cohere.
 2. Ollama.
 3. Open AI.
 
-If using [Ollama](https://ollama.com/), you will also need to install it or, point the chatbot to a remotely hosted Ollama server.
+If using [Ollama](https://ollama.com/), you will also need to install it or, point the chatbot to a remotely hosted Ollama server. You also need to pull the Ollama model that you specify with `OLLAMA_MODEL` environment variable using `ollama pull <model-name>` (replace `<model-name>` with the actual model that you want to use) on your Ollama server. Check the [available Ollama models](https://ollama.com/library).
 
-OpenAI can be used by specifying an `OPENAI_API_KEY`, an `OPENAI_MODEL`, and by choosing `Open AI` as the `LLM_PROVIDER`. Follow [this link](https://platform.openai.com/account/api-keys) to get an Open AI API key. Similarly, Cohere can be used by specifying a `COHERE_API_KEY`, a `COHERE_MODEL` (which defaults to `command`), and by choosing `Cohere` as the `LLM_PROVIDER`. Follow [this link](https://cohere.com/pricing) to obtain a Cohere API key.
+Open AI can be used by specifying an `OPENAI_API_KEY`, an `OPENAI_MODEL`, and by choosing `Open AI` as the `LLM_PROVIDER`. Follow [this link](https://platform.openai.com/account/api-keys) to get an Open AI API key. Similarly, Cohere can be used by specifying a `COHERE_API_KEY`, a `COHERE_MODEL` (which defaults to `command`), and by choosing `Cohere` as the `LLM_PROVIDER`. Follow [this link](https://cohere.com/pricing) to obtain a Cohere API key.
 
 See the settings in the `.env.template` file customisation of the LLM settings.
 
@@ -79,15 +81,17 @@ docker create -p 8501:8501/tcp --name tldrlc-container tldrlc
 docker container start tldrlc-container
 ```
 
-Following this, the app will be accessible on your Docker host, for example as [http://localhost:8501](http://localhost:8501) -- assuming that nothing else on host is listening to port 8501.
+Following this, the app will be accessible on your Docker host, for example as [http://localhost:8501](http://localhost:8501) -- assuming that nothing else on host was blocking port 8501.
 
 If you want to change the settings of Streamlit or the app itself inside the container, login to the container as `root`. You can do this by running `docker exec -it tldrlc-container bash`. Once, you have the shell access in the container, edit the files `/app/.streamlit/config.toml` and `/app/.env` respectively using the `nano` editor that is installed for convenience. For example, you can change the default behaviour of the containerised app to use your preferred remote graph, index and document storage. Then, restart the _same_ container, by running `docker container restart tldrlc-container`. Remember that these changes _will not_ propagate to any new container that you spin out of the image.
 
 ### Cloud deployment
 
-An example deployment of this app may be available on Render at [https://tldrlc.onrender.com](https://tldrlc.onrender.com).
+An example deployment of this app may be available on Render at [https://tldrlc.onrender.com](https://tldrlc.onrender.com). The cloud deployment on Render is for demonstrations only. The deployment may be spun down due to inactivity and it can take up to a minute to spin it up.
 
 For a cloud deployment, you have to use Open AI or Cohere. By default, graph, index and documents will be stored in memory with no disk persistence. If you want persistence with the deployment with a cloud deployment, you must use [Neo4j Aura DB](https://neo4j.com/cloud/platform/aura-graph-database/) and a remotely hosted Redis (e.g., [Redis on Render](https://docs.render.com/redis)). Alternatively, you can use local or on-premises hosted Ollama, Neo4j and Redis by exposing those services with TCP (or, TLS) tunnels publicly through [ngrok](https://ngrok.com/).
+
+**Note** that for the aforementioned cloud deployment(s), unless you create your separate cloud deployment by yourself, LangFuse evaluation is enabled by default and cannot be turned off. This is meant for evaluation purposes of this project. Hence, all information about your interactions with the chatbot will be available to the maintainer(s) of this project. _For local, Docker or cloud deployments that you create, LangFuse is **not** enabled by default. Even when enabled, by yourself, LangFuse traces will be available to you, and not the maintainer(s) of this project_.
 
 ## Support
 
@@ -103,4 +107,4 @@ Apache License, Version 2.0, January 2004. See: [http://www.apache.org/licenses/
 
 ## Project status
 
-Actively maintained early stage prototype.
+Actively maintained early stage prototype for experimentation only.

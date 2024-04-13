@@ -163,9 +163,3 @@ cython_debug/
 
 # Streamlit config
 .streamlit/
-
-# Local Redis RDB dump file
-dump.rdb
-
-# Temporary HTML files, e.g., the knowledge graph
-__tmp_*.html

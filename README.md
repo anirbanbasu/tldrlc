@@ -1,4 +1,4 @@
-[![Pylint](https://github.com/anirbanbasu/tldrlc/actions/workflows/pylint.yml/badge.svg)](https://github.com/anirbanbasu/tldrlc/actions/workflows/pylint.yml)
+[![Pylint](https://github.com/anirbanbasu/tldrlc-internal/actions/workflows/pylint.yml/badge.svg)](https://github.com/anirbanbasu/tldrlc-internal/actions/workflows/pylint.yml)
 
 # Too Long, Didn't Read, Let's Chat (TLDRLC)
 
@@ -88,6 +88,8 @@ If you want to change the settings of Streamlit or the app itself inside the con
 ### Cloud deployment
 
 An example deployment of this app may be available on Render at [https://tldrlc.onrender.com](https://tldrlc.onrender.com). The cloud deployment on Render is for demonstrations only. The deployment may be spun down due to inactivity and it can take up to a minute to spin it up.
+
+Another example deployment of this app may be available on the Streamlit community cloud at [https://tldrlc.streamlit.app](https://tldrlc.streamlit.app). Similar to the Render deployment, the Streamlit community cloud deployment may be spun down due to inactivity. If it is then you need to start it, in order to be able to interact with it.
 
 For a cloud deployment, you have to use Open AI or Cohere. By default, graph, index and documents will be stored in memory with no disk persistence. If you want persistence with the deployment with a cloud deployment, you must use [Neo4j Aura DB](https://neo4j.com/cloud/platform/aura-graph-database/) and a remotely hosted Redis (e.g., [Redis on Render](https://docs.render.com/redis)). Alternatively, you can use local or on-premises hosted Ollama, Neo4j and Redis by exposing those services with TCP (or, TLS) tunnels publicly through [ngrok](https://ngrok.com/).
 

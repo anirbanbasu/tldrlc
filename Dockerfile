@@ -13,22 +13,20 @@
 # limitations under the License.
 
 # Pull Python 3.12 on Debian Bookworm slim image
-FROM python:3.12-slim-bookworm
+FROM python:3.12.3-slim-bookworm
 
-# Update apt-get and install basic packages
-RUN apt-get update
-RUN apt-get install -y nano
+# Upgrade and install basic packages
+RUN apt-get update && apt-get -y upgrade && apt-get -y dist-upgrade && apt-get -y install nano
 
 # Set the working directory in the container
 WORKDIR /app
 
 # Copy the project files
-COPY ./requirements.txt .
-COPY ./Chatbot.py .
-COPY ./pages/Knowledge_Graph_Visualisation.py ./pages/Knowledge_Graph_Visualisation.py
-COPY ./utils/callbacks/ragas_langfuse.py ./utils/callbacks/ragas_langfuse.py
-COPY ./LICENSE .
-COPY ./README.md .
+COPY ./*.py ./
+COPY ./pages/*.py ./pages/
+COPY ./utils/callbacks/*.py ./utils/callbacks/
+COPY ./utils/streamlit/*.py ./utils/streamlit/
+COPY ./*.md ./LICENSE ./requirements.txt ./
 COPY ./.env.docker ./.env
 COPY ./streamlit-config-docker.toml ./.streamlit/config.toml
 

@@ -1,5 +1,6 @@
 # pylint: disable=line-too-long
 # pylint: disable=invalid-name
+# pylint: disable=duplicate-code
 
 # Copyright 2024 Anirban Basu
 

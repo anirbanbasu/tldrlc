@@ -1,9 +1,3 @@
-# pylint: disable=line-too-long
-# pylint: disable=invalid-name
-# pylint: disable=broad-exception-caught
-# pylint: disable=duplicate-code
-# pylint: disable=use-yield-from
-
 # Copyright 2024 Anirban Basu
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-""" Module for the main page of the Streamlit app for TLDRLC."""
+"""Module for the main page of the Streamlit app for TLDRLC."""
 
 import datetime
 import hashlib

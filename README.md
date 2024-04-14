@@ -1,4 +1,4 @@
-[![Pylint](https://github.com/anirbanbasu/tldrlc-internal/actions/workflows/pylint.yml/badge.svg)](https://github.com/anirbanbasu/tldrlc-internal/actions/workflows/pylint.yml)
+[![Python lint](https://github.com/anirbanbasu/tldrlc-internal/actions/workflows/python-app.yml/badge.svg)](https://github.com/anirbanbasu/tldrlc-internal/actions/workflows/python-app.yml)
 
 # Too Long, Didn't Read, Let's Chat (TLDRLC)
 

@@ -1,0 +1,38 @@
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
+
+name: Python ruff linter format-checker
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.12"
+        cache: "pip"
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip setuptools wheel
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+    - name: Install tools
+      run: |
+        pip install ruff
+    - name: Format check with ruff
+      run: |
+        ruff format --target-version py312 --check --respect-gitignore --no-preview
+    - name: Lint with ruff
+      run: |
+        ruff check --target-version py312 --output-format full --respect-gitignore .

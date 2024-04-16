@@ -120,7 +120,7 @@ with st.expander("**Language model**", expanded=False):
         ),
         step=0.1,
         key="shadow__settings_llm__llm_temperature",
-        help="The temperature parameter with a value in $[0,1]$ controls the randomness of the output. A value of $0$ is least random while a value of $1$ will make the output more random, hence more creative.",
+        help="The temperature parameter with a value in $[0,1]$ ($[0,2]$ for Open AI) controls the randomness of the output. A value of $0$ is least random while a value of $1$ (or $2$ for Open AI) will make the output more random, hence more creative.",
         on_change=update_llm_settings,
     )
     st.slider(

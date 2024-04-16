@@ -32,14 +32,28 @@ from llama_index.core import load_index_from_storage
 from llama_index.core.node_parser import SentenceSplitter
 from llama_index.core import Settings
 from llama_index.postprocessor.cohere_rerank import CohereRerank
+from llama_index.core.postprocessor import SentenceTransformerRerank
 
 import streamlit as st
 
-
-# Fun emojis for messages: https://github.com/ikatyang/emoji-cheat-sheet
-
-# Setup page metadata
-
+from utils.constants import (
+    CHAT_KEY_CONTENT,
+    CHAT_KEY_ROLE,
+    CHAT_KEY_TIMESTAMP,
+    CHAT_KEY_VALUE_ASSISTANT,
+    CHAT_KEY_VALUE_USER,
+    LIST_OF_SOURCE_TYPES,
+    LIST_OF_SOURCE_TYPES_DESCRIPTIONS,
+    SOURCE_TYPE_ARXIV,
+    SOURCE_TYPE_PDF,
+    SOURCE_TYPE_PUBMED,
+    SOURCE_TYPE_WEBPAGE,
+    SOURCE_TYPE_WIKIPEDIA,
+    UI_CHAT_CONTAINER_HEIGHT,
+    UI_STATUS_CONTAINER_HEIGHT,
+    WEBPAGE_READER_BEAUTIFUL_SOUP,
+    WEBPAGE_READER_TRAFILATURA,
+)
 from utils.streamlit.settings_manager import (
     copy_shadow_ui_widget_session_keys,
     initialise_shadow_settings,
@@ -49,6 +63,7 @@ from utils.streamlit.settings_manager import (
 from utils.streamlit.notifications import write_eu_ai_act_transparency_notice
 
 # Setup page metadata and load settings
+# Fun emojis for messages: https://github.com/ikatyang/emoji-cheat-sheet
 if "first_run" not in st.session_state.keys():
     st.set_page_config(
         page_title="TLDRLC: Too Long, Didn't Read, Let's Chat!",
@@ -70,6 +85,7 @@ else:
 
 st.title("TLDRLC: Too Long, Didn't Read, Let's Chat!")
 
+# Add the EU AI Act Article 52 transparency notice to the side bar
 with st.sidebar:
     write_eu_ai_act_transparency_notice()
 
@@ -83,7 +99,7 @@ st.markdown(
 
 def stream_wrapper(streaming_response):
     """Wrapper for the streaming response from the chat engine."""
-    # Do not use yield from!
+    # Do not use yield from as suggested by Pylint. Irrelevant for ruff.
     for token in streaming_response.response_gen:
         # Filter out symbols that break formatting
         if token == "$":
@@ -95,7 +111,7 @@ def stream_wrapper(streaming_response):
 
 def save_graph_visualisation(_kgindex: KnowledgeGraphIndex) -> str:
     """Save the graph visualisation to a HTML file."""
-    # Try to make a graph from the index at all depths
+    # Try to make a graph from the index at all depths, but limit the number of nodes
     graph = nx.Graph()
     already_added_nodes = set()
     nodes = list(_kgindex.index_struct.table.keys())[
@@ -105,30 +121,36 @@ def save_graph_visualisation(_kgindex: KnowledgeGraphIndex) -> str:
     for node in nodes:
         triplets = _kgindex.storage_context.graph_store.get(node)
         if node not in already_added_nodes:
+            # This node title reformatting is purely for visualisation purposes
             node_title = node.replace("_", " ").capitalize()
             graph.add_node(
-                node, label=node_title, title=node_title, value=len(triplets) + 1
+                node,
+                label=node_title,
+                title=node_title,
+                # Value signifies the number of outgoing edges from this node
+                value=len(triplets) + 1,
             )
             already_added_nodes.add(node)
         for triplet in triplets:
-            # print(f"Edge: ({node}) - [{triplet[0]}] -> {triplet[1]}")
             if triplet[1] in nodes:
+                # This edge title reformatting is purely for visualisation purposes
                 edge_title = triplet[0].replace("_", " ").capitalize()
                 graph.add_edge(node, triplet[1], title=edge_title)
-    # Which layout is better?
+    # Use user-specified layout for the graph
+    _scale_factor = len(nodes) * 24
     match st.session_state.settings_kgvis__layout:
         case "circular":
-            positions = nx.circular_layout(graph, scale=len(nodes) * 24)
+            positions = nx.circular_layout(graph, scale=_scale_factor)
         case "planar":
-            positions = nx.planar_layout(graph, scale=len(nodes) * 24)
+            positions = nx.planar_layout(graph, scale=_scale_factor)
         case "shell":
-            positions = nx.shell_layout(graph, scale=len(nodes) * 24)
+            positions = nx.shell_layout(graph, scale=_scale_factor)
         case "spectral":
-            positions = nx.spectral_layout(graph, scale=len(nodes) * 24)
+            positions = nx.spectral_layout(graph, scale=_scale_factor)
         case "spring":
-            positions = nx.spring_layout(graph, scale=len(nodes) * 24)
+            positions = nx.spring_layout(graph, scale=_scale_factor)
         case _:
-            positions = nx.spring_layout(graph, scale=len(nodes) * 24)
+            positions = nx.spring_layout(graph, scale=_scale_factor)
 
     network = Network(
         notebook=False,
@@ -166,9 +188,7 @@ def build_index(_documents, _clear_existing_kg=False):
             """
         )
     else:
-        st.warning(
-            ":bathtub: Keeping, perhaps overwriting, existing knowledge graphs..."
-        )
+        st.warning(":bathtub: Perhaps overwriting, existing knowledge graphs...")
     st.warning(":sheep: Parsing chunks from sources...")
     chunk_parser = SentenceSplitter.from_defaults(
         chunk_size=Settings.chunk_size,
@@ -206,8 +226,10 @@ def initialise_chat_engine():
         post_processors = [
             CohereRerank(api_key=st.session_state.settings_llm__cohere_api_key)
         ]
-    if "index" in st.session_state.keys() and st.session_state.index is not None:
-        if "memory" in st.session_state.keys():
+    else:
+        post_processors = [SentenceTransformerRerank()]
+    if "index" in st.session_state and st.session_state.index is not None:
+        if "memory" in st.session_state:
             st.session_state.memory.reset()
         return st.session_state.index.as_chat_engine(
             chat_mode=st.session_state.settings_llm__index_chat_mode,
@@ -222,7 +244,7 @@ def initialise_chat_engine():
 
 def clear_chat_history():
     """Clear the chat history."""
-    if "memory" in st.session_state.keys():
+    if "memory" in st.session_state:
         st.session_state.memory.reset()
     st.session_state.messages.clear()
 
@@ -234,30 +256,22 @@ def export_chat_history_as_json():
             f"**Exported chat history of {len(st.session_state.messages)} messages**",
             expanded=True,
         ):
-            with st.container(height=300, border=0):
+            with st.container(height=UI_STATUS_CONTAINER_HEIGHT, border=0):
                 st.json(
                     json.dumps(st.session_state.messages, indent=2, ensure_ascii=False)
                 )
 
 
-# Main page content
-
+# Main page content: col1_main on LHS, col2_main on RHS
 col1_main, col2_main = st.columns(2, gap="large")
 
 container_data_source = col1_main.container()
-
 container_data_source.markdown("## Data source")
 
 container_data_source.radio(
     "Source type",
-    ["Wikipedia", "arXiv", "Pubmed", "Web page", "PDF"],
-    captions=[
-        "Wikipedia article",
-        "arXiv query",
-        "Pubmed query",
-        "URL of a webpage",
-        "URL of a PDF file",
-    ],
+    LIST_OF_SOURCE_TYPES,
+    captions=LIST_OF_SOURCE_TYPES_DESCRIPTIONS,
     help="Select the type of source document to fetch. For arXiv and Pubmed, a search query may result in many relevant articles. Only the top 10 will be used as input sources.",
     key="shadow__ui__radio_source_type",
     horizontal=True,
@@ -277,7 +291,7 @@ col1_wikipedia_prefix.selectbox(
     options=list(wikipedia.languages().keys()),
     format_func=format_wikipedia_languages,
     key="shadow__ui__selectbox_wikipedia_prefix",
-    disabled=st.session_state.shadow__ui__radio_source_type != "Wikipedia",
+    disabled=st.session_state.shadow__ui__radio_source_type != SOURCE_TYPE_WIKIPEDIA,
     help="Select the Wikipedia language prefix (defaults to `en: English`). Check supported languages here: [List of Wikipedias](https://en.wikipedia.org/wiki/List_of_Wikipedias).",
     on_change=copy_shadow_ui_widget_session_keys,
 )
@@ -285,8 +299,8 @@ col1_wikipedia_prefix.selectbox(
 col2_webpage_reader.selectbox(
     "Web page reader",
     key="shadow__ui__select_webpage_reader",
-    options=["BeautifulSoup", "Trafilatura"],
-    disabled=st.session_state.shadow__ui__radio_source_type != "Web page",
+    options=[WEBPAGE_READER_BEAUTIFUL_SOUP, WEBPAGE_READER_TRAFILATURA],
+    disabled=st.session_state.shadow__ui__radio_source_type != SOURCE_TYPE_WEBPAGE,
     help="Select the type of reader to use to extract text from the web page. _Only available for selection if you use `Web page` as the input source._ One reader maybe more efficient than another in the task of extracting text, depending on the source web page.",
     on_change=copy_shadow_ui_widget_session_keys,
 )
@@ -339,9 +353,9 @@ def fetch_documents_build_index():
         with container_data_source.status(
             "Reading article and digesting the information...", expanded=True
         ):
-            with st.container(height=300, border=0):
+            with st.container(height=UI_STATUS_CONTAINER_HEIGHT, border=0):
                 start_time = time.time()
-                if st.session_state.ui__radio_source_type == "Wikipedia":
+                if st.session_state.ui__radio_source_type == SOURCE_TYPE_WIKIPEDIA:
                     st.toast(
                         f":notebook: Looking for the {st.session_state.ui__txtinput_document_source} on Wikipedia in {format_wikipedia_languages(st.session_state.ui__selectbox_wikipedia_prefix)}."
                     )
@@ -362,9 +376,9 @@ def fetch_documents_build_index():
                             auto_suggest=False,
                         )
                     st.warning(
-                        f":newspaper: Fetched {len(documents)} Wikipedia article entries. Excerpts: {documents[0].doc_id}\n\r > {documents[0].get_text()[:Settings.chunk_size]}..."
+                        f":newspaper: Fetched {len(documents)} Wikipedia article {'entry' if len(documents)==1 else 'entries'}."
                     )
-                elif st.session_state.ui__radio_source_type == "arXiv":
+                elif st.session_state.ui__radio_source_type == SOURCE_TYPE_ARXIV:
                     reader = ArxivReader()
                     documents = reader.load_data(
                         papers_dir="tmp-arxiv",
@@ -373,7 +387,7 @@ def fetch_documents_build_index():
                     st.warning(
                         f":newspaper: Fetched {len(documents)} entries from multiple arXiv papers."
                     )
-                elif st.session_state.ui__radio_source_type == "Pubmed":
+                elif st.session_state.ui__radio_source_type == SOURCE_TYPE_PUBMED:
                     reader = PubmedReader()
                     documents = reader.load_data(
                         search_query=st.session_state.ui__txtinput_document_source
@@ -381,7 +395,7 @@ def fetch_documents_build_index():
                     st.warning(
                         f":newspaper: Fetched {len(documents)} entries from multiple Pubmed articles."
                     )
-                elif st.session_state.ui__radio_source_type == "Web page":
+                elif st.session_state.ui__radio_source_type == SOURCE_TYPE_WEBPAGE:
                     match st.session_state.ui__select_webpage_reader:
                         case "Trafilatura":
                             reader = TrafilaturaWebReader()
@@ -393,12 +407,12 @@ def fetch_documents_build_index():
                     st.warning(
                         f":newspaper: Fetched the web page {st.session_state.ui__txtinput_document_source} using the {st.session_state.ui__select_webpage_reader} reader. Excerpts: {documents[0].doc_id}\n\r > {documents[0].get_text()[:Settings.chunk_size]}..."
                     )
-                elif st.session_state.ui__radio_source_type == "PDF":
+                elif st.session_state.ui__radio_source_type == SOURCE_TYPE_PDF:
                     documents = load_remote_pdf_data(
                         pdf_url=st.session_state.ui__txtinput_document_source
                     )
                     st.warning(
-                        f":newspaper: Fetched {len(documents)} pages(s) from {st.session_state.ui__txtinput_document_source}. Excerpts from the first page {documents[0].doc_id}\n\r > {documents[0].get_text()[:Settings.chunk_size]}..."
+                        f":newspaper: Fetched {len(documents)} pages(s) from {st.session_state.ui__txtinput_document_source}."
                     )
                 else:
                     st.error(
@@ -417,9 +431,13 @@ def fetch_documents_build_index():
                 st.success(
                     f":white_check_mark: Phew, done in {round(end_time-start_time)} second(s)! Now, you can chat about this data source."
                 )
-                st.info(
-                    f":pig_nose: Saved index ID :red[{st.session_state.index.index_id}] to storage. Make a note of this ID for future reference to reload the index."
-                )
+                if (
+                    not st.session_state.settings_graphdb__disable
+                    and not st.session_state.settings_redis__disable
+                ):
+                    st.info(
+                        f":pig_nose: Saved index ID :red[{st.session_state.index.index_id}] to storage. Make a note of this ID for future reference to reload the index."
+                    )
     except Exception as build_index_e:
         st.error(
             f":x: Error while building index from document(s). {type(build_index_e).__name__}: {build_index_e}"
@@ -432,7 +450,7 @@ def load_existing_index():
         copy_shadow_ui_widget_session_keys()
         # Clear any existing knowledge graph visualisation
         with container_data_source.status("Loading existing index...", expanded=True):
-            with st.container(height=300, border=0):
+            with st.container(height=UI_STATUS_CONTAINER_HEIGHT, border=0):
                 start_time = time.time()
                 st.warning(":bee: Loading index from Redis storage.")
                 st.session_state.index = load_index_from_storage(
@@ -459,7 +477,7 @@ def generate_knowledge_graph_visualisation():
         with container_data_source.status(
             "Creating graph visualisation...", expanded=True
         ):
-            with st.container(height=300, border=0):
+            with st.container(height=UI_STATUS_CONTAINER_HEIGHT, border=0):
                 start_time = time.time()
                 st.warning(
                     f":snail: Building graph visualisation from {len(list(st.session_state.index.index_struct.table.keys()))} nodes. This MAY take time, if the graph is large!"
@@ -467,7 +485,7 @@ def generate_knowledge_graph_visualisation():
                 save_graph_visualisation(st.session_state.index)
                 end_time = time.time()
                 st.success(
-                    f":white_check_mark: Done in {round(end_time-start_time)} second(s)! The graph visualisation can be seen in the [Knowledge Graph Visualisation](Knowledge_Graph_Visualisation) page in the sidebar on the left."
+                    f":white_check_mark: Done in {round(end_time-start_time)} second(s)! The graph visualisation can be seen in the **Knowledge Graph Visualisation** page in the sidebar on the left."
                 )
     except Exception as gen_kgvis_e:
         st.error(
@@ -520,42 +538,38 @@ if len(st.session_state.messages) > 0:
 
 # Chatbot
 # col1_heading, col2_export, col3_delete = col2_main.columns([3, 2, 1])
-col2_main.markdown("## Chat with the data")
+col2_main.markdown("## Chat about the data")
 
-if "chatbot" in st.session_state.keys() and st.session_state.chatbot is not None:
-    container_chat = col2_main.container(height=400, border=1)
-
+if "chatbot" in st.session_state and st.session_state.chatbot is not None:
+    container_chat = col2_main.container(height=UI_CHAT_CONTAINER_HEIGHT, border=1)
     for message in st.session_state.messages:  # Display the prior chat messages
-        with container_chat.chat_message(message["role"]):
-            st.markdown(message["content"])
+        with container_chat.chat_message(message[CHAT_KEY_ROLE]):
+            st.markdown(message[CHAT_KEY_CONTENT])
 
     if prompt := col2_main.chat_input("Type your question or message here"):
         st.session_state.messages.append(
             {
-                "role": "user",
-                "content": prompt,
-                "timestamp": f"{datetime.datetime.now()}",
+                CHAT_KEY_ROLE: CHAT_KEY_VALUE_USER,
+                CHAT_KEY_CONTENT: prompt,
+                CHAT_KEY_TIMESTAMP: f"{datetime.datetime.now()}",
             }
         )
-        with container_chat.chat_message("user"):
+        with container_chat.chat_message(CHAT_KEY_VALUE_USER):
             st.markdown(prompt)
-        if (
-            len(st.session_state.messages) > 0
-            and st.session_state.messages[-1]["role"] != "assistant"
-        ):
-            with container_chat.chat_message("assistant"):
-                with st.spinner("Looking for responses..."):
-                    response = st.write_stream(
-                        stream_wrapper(st.session_state.chatbot.stream_chat(prompt))
-                    )
-            # Add response to message history
-            st.session_state.messages.append(
-                {
-                    "role": "assistant",
-                    "content": response,
-                    "timestamp": f"{datetime.datetime.now()}",
-                }
-            )
+        with container_chat.chat_message(CHAT_KEY_VALUE_ASSISTANT):
+            with st.empty():
+                st.markdown("Figuring out how to respond...")
+                response = st.write_stream(
+                    stream_wrapper(st.session_state.chatbot.stream_chat(prompt))
+                )
+        # Add response to message history
+        st.session_state.messages.append(
+            {
+                CHAT_KEY_ROLE: CHAT_KEY_VALUE_ASSISTANT,
+                CHAT_KEY_CONTENT: response,
+                CHAT_KEY_TIMESTAMP: f"{datetime.datetime.now()}",
+            }
+        )
 else:
     col2_main.info(
         """:information_desk_person: Chatbot is not ready! Please build the index 

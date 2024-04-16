@@ -45,6 +45,38 @@ from langfuse import Langfuse
 
 # from langfuse.llama_index import LlamaIndexCallbackHandler
 from utils.callbacks.ragas_langfuse import RagasLangfuseCallbackHandler
+from utils.constants import (
+    DEFAULT_SETTING_COHERE_MODEL,
+    DEFAULT_SETTING_EVAL_USE_LANGFUSE,
+    DEFAULT_SETTING_INDEX_CHAT_MODE,
+    DEFAULT_SETTING_INDEX_INCLUDE_EMBEDDINGS,
+    DEFAULT_SETTING_INDEX_MAX_TRIPLETS_PER_CHUNK,
+    DEFAULT_SETTING_INDEX_MEMORY_TOKEN_LIMIT,
+    DEFAULT_SETTING_KG_VIS_HEIGHT,
+    DEFAULT_SETTING_KG_VIS_LAYOUT,
+    DEFAULT_SETTING_KG_VIS_MAX_DEPTH,
+    DEFAULT_SETTING_KG_VIS_MAX_NODES,
+    DEFAULT_SETTING_KG_VIS_PHYSICS_ENABLED,
+    DEFAULT_SETTING_LLM_CHUNK_OVERLAP,
+    DEFAULT_SETTING_LLM_CHUNK_SIZE,
+    DEFAULT_SETTING_LLM_PROVIDER,
+    DEFAULT_SETTING_LLM_REQUEST_TIMEOUT,
+    DEFAULT_SETTING_LLM_SYSTEM_MESSAGE,
+    DEFAULT_SETTING_LLM_TEMPERATURE,
+    DEFAULT_SETTING_NEO4J_DB_NAME,
+    DEFAULT_SETTING_NEO4J_DISABLE,
+    DEFAULT_SETTING_NEO4J_URL,
+    DEFAULT_SETTING_NEO4J_USERNAME,
+    DEFAULT_SETTING_OLLAMA_MODEL,
+    DEFAULT_SETTING_OLLAMA_URL,
+    DEFAULT_SETTING_OPENAI_MODEL,
+    DEFAULT_SETTING_REDIS_DISABLE,
+    DEFAULT_SETTING_REDIS_NAMESPACE,
+    DEFAULT_SETTING_REDIS_URL,
+    LIST_OF_SUPPORTED_LLM_PROVIDERS,
+    SOURCE_TYPE_WIKIPEDIA,
+    WEBPAGE_READER_BEAUTIFUL_SOUP,
+)
 
 
 def initialise_constants():
@@ -64,41 +96,50 @@ def initialise_llm_settings():
     # LLM settings
     if "settings_llm__request_timeout" not in st.session_state:
         st.session_state.settings_llm__request_timeout = int(
-            os.getenv("LLM_REQUEST_TIMEOUT", "120")
+            os.getenv("LLM_REQUEST_TIMEOUT", f"{DEFAULT_SETTING_LLM_REQUEST_TIMEOUT}")
         )
     if "settings_llm__llm_temperature" not in st.session_state:
         st.session_state.settings_llm__llm_temperature = float(
-            os.getenv("LLM_TEMPERATURE", "0.0")
+            os.getenv("LLM_TEMPERATURE", f"{DEFAULT_SETTING_LLM_TEMPERATURE}")
         )
     if "settings_llm__llm_system_message" not in st.session_state:
         st.session_state.settings_llm__llm_system_message = os.getenv(
             "LLM_SYSTEM_MESSAGE",
-            "You are an intelligent assistant. You respond to questions about articles from various sources such as Wikipedia, arXiv, Pubmed and so on. You generate your answers based ONLY on information in those articles that are provided to you as context information. If you are unsure about an answer or if the user query cannot be answered using information in the context then say that you do not know. If the user ask you to stop, immediately stop answering.",
+            f"{DEFAULT_SETTING_LLM_SYSTEM_MESSAGE}",
         )
     if "settings_llm__llm_chunk_size" not in st.session_state:
         st.session_state.settings_llm__llm_chunk_size = int(
-            os.getenv("LLM_CHUNK_SIZE", "1024")
+            os.getenv("LLM_CHUNK_SIZE", f"{DEFAULT_SETTING_LLM_CHUNK_SIZE}")
         )
     if "settings_llm__llm_chunk_overlap" not in st.session_state:
         st.session_state.settings_llm__llm_chunk_overlap = int(
-            os.getenv("LLM_CHUNK_OVERLAP", "64")
+            os.getenv("LLM_CHUNK_OVERLAP", f"{DEFAULT_SETTING_LLM_CHUNK_OVERLAP}")
         )
     if "settings_llm__index_memory_token_limit" not in st.session_state:
         st.session_state.settings_llm__index_memory_token_limit = int(
-            os.getenv("INDEX_MEMORY_TOKEN_LIMIT", "4096")
+            os.getenv(
+                "INDEX_MEMORY_TOKEN_LIMIT",
+                f"{DEFAULT_SETTING_INDEX_MEMORY_TOKEN_LIMIT}",
+            )
         )
     if "settings_llm__index_max_triplets_per_chunk" not in st.session_state:
         st.session_state.settings_llm__index_max_triplets_per_chunk = int(
-            os.getenv("INDEX_MAX_TRIPLETS_PER_CHUNK", "8")
+            os.getenv(
+                "INDEX_MAX_TRIPLETS_PER_CHUNK",
+                f"{DEFAULT_SETTING_INDEX_MAX_TRIPLETS_PER_CHUNK}",
+            )
         )
     if "settings_llm__index_include_embeddings" not in st.session_state:
         st.session_state.settings_llm__index_include_embeddings = bool(
-            os.getenv("INDEX_INCLUDE_EMBEDDINGS", "True").lower()
+            os.getenv(
+                "INDEX_INCLUDE_EMBEDDINGS",
+                f"{DEFAULT_SETTING_INDEX_INCLUDE_EMBEDDINGS}",
+            ).lower()
             in ["true", "yes", "t", "y", "on"]
         )
     if "settings_llm__index_chat_mode" not in st.session_state:
         st.session_state.settings_llm__index_chat_mode = os.getenv(
-            "INDEX_CHAT_MODE", "context"
+            "INDEX_CHAT_MODE", f"{DEFAULT_SETTING_INDEX_CHAT_MODE}"
         )
 
 
@@ -151,21 +192,23 @@ def initialise_graphdb_settings():
     # Graph database settings
     if "settings_graphdb__disable" not in st.session_state:
         st.session_state.settings_graphdb__disable = bool(
-            os.getenv("NEO4J_DISABLE", "False").lower()
+            os.getenv("NEO4J_DISABLE", f"{DEFAULT_SETTING_NEO4J_DISABLE}").lower()
             in ["true", "yes", "t", "y", "on"]
         )
     if "settings_graphdb__url" not in st.session_state:
         st.session_state.settings_graphdb__url = os.getenv(
-            "NEO4J_URL", "bolt://localhost:7687"
+            "NEO4J_URL", f"{DEFAULT_SETTING_NEO4J_URL}"
         )
     if "settings_graphdb__username" not in st.session_state:
         st.session_state.settings_graphdb__username = os.getenv(
-            "NEO4J_USERNAME", "neo4j"
+            "NEO4J_USERNAME", f"{DEFAULT_SETTING_NEO4J_USERNAME}"
         )
     if "settings_graphdb__password" not in st.session_state:
         st.session_state.settings_graphdb__password = os.getenv("NEO4J_PASSWORD")
     if "settings_graphdb__dbname" not in st.session_state:
-        st.session_state.settings_graphdb__dbname = os.getenv("NEO4J_DB_NAME", "neo4j")
+        st.session_state.settings_graphdb__dbname = os.getenv(
+            "NEO4J_DB_NAME", f"{DEFAULT_SETTING_NEO4J_DB_NAME}"
+        )
 
 
 def initialise_shadow_graphdb_settings():
@@ -197,16 +240,16 @@ def initialise_document_index_store_settings():
     # Redis settings
     if "settings_redis__disable" not in st.session_state:
         st.session_state.settings_redis__disable = bool(
-            os.getenv("REDIS_DISABLE", "False").lower()
+            os.getenv("REDIS_DISABLE", f"{DEFAULT_SETTING_REDIS_DISABLE}").lower()
             in ["true", "yes", "t", "y", "on"]
         )
     if "settings_redis__url" not in st.session_state:
         st.session_state.settings_redis__url = os.getenv(
-            "REDIS_URL", "redis://localhost:6379"
+            "REDIS_URL", f"{DEFAULT_SETTING_REDIS_URL}"
         )
     if "settings_redis__namespace" not in st.session_state:
         st.session_state.settings_redis__namespace = os.getenv(
-            "REDIS_NAMESPACE", "tldrlc"
+            "REDIS_NAMESPACE", f"{DEFAULT_SETTING_REDIS_NAMESPACE}"
         )
 
 
@@ -230,20 +273,26 @@ def initialise_graph_visualisation_settings():
     """Initialise the graph visualisation settings."""
     # Knowledge graph visualisation settings
     if "settings_kgvis__height" not in st.session_state:
-        st.session_state.settings_kgvis__height = int(os.getenv("KG_VIS_HEIGHT", "800"))
+        st.session_state.settings_kgvis__height = int(
+            os.getenv("KG_VIS_HEIGHT", f"{DEFAULT_SETTING_KG_VIS_HEIGHT}")
+        )
     if "settings_kgvis__max_nodes" not in st.session_state:
         st.session_state.settings_kgvis__max_nodes = int(
-            os.getenv("KG_VIS_MAX_NODES", "100")
+            os.getenv("KG_VIS_MAX_NODES", f"{DEFAULT_SETTING_KG_VIS_MAX_NODES}")
         )
     if "settings_kgvis__max_depth" not in st.session_state:
         st.session_state.settings_kgvis__max_depth = int(
-            os.getenv("KG_VIS_MAX_DEPTH", "3")
+            os.getenv("KG_VIS_MAX_DEPTH", f"{DEFAULT_SETTING_KG_VIS_MAX_DEPTH}")
         )
     if "settings_kgvis__layout" not in st.session_state:
-        st.session_state.settings_kgvis__layout = os.getenv("KG_VIS_LAYOUT", "spring")
+        st.session_state.settings_kgvis__layout = os.getenv(
+            "KG_VIS_LAYOUT", f"{DEFAULT_SETTING_KG_VIS_LAYOUT}"
+        )
     if "settings_kgvis__physics_enabled" not in st.session_state:
         st.session_state.settings_kgvis__physics_enabled = bool(
-            os.getenv("KG_VIS_PHYSICS_ENABLED", "True").lower()
+            os.getenv(
+                "KG_VIS_PHYSICS_ENABLED", f"{DEFAULT_SETTING_KG_VIS_PHYSICS_ENABLED}"
+            ).lower()
             in ["true", "yes", "t", "y", "on"]
         )
 
@@ -317,7 +366,7 @@ def initialise_widget_session_keys():
             )
 
     if "ui__radio_source_type" not in st.session_state:
-        st.session_state.ui__radio_source_type = "Wikipedia"
+        st.session_state.ui__radio_source_type = SOURCE_TYPE_WIKIPEDIA
 
     if "ui__selectbox_wikipedia_prefix" not in st.session_state:
         st.session_state.ui__selectbox_wikipedia_prefix = (
@@ -325,12 +374,12 @@ def initialise_widget_session_keys():
         )
 
     if "ui__select_webpage_reader" not in st.session_state:
-        st.session_state.ui__select_webpage_reader = "BeautifulSoup"
+        st.session_state.ui__select_webpage_reader = WEBPAGE_READER_BEAUTIFUL_SOUP
 
 
 def initialise_settings():
     """Initialise the session state and other variables."""
-    st.session_state.const_llm_providers.list = ["Cohere", "Ollama", "Open AI"]
+    st.session_state.const_llm_providers.list = LIST_OF_SUPPORTED_LLM_PROVIDERS
     st.session_state.const_llm_providers.cohere = (
         st.session_state.const_llm_providers.list[0]
     )
@@ -348,7 +397,9 @@ def initialise_settings():
     # Setup performance evaluation using Langfuse
     if "use_langfuse" not in st.session_state:
         st.session_state.use_langfuse = bool(
-            os.getenv("EVAL_USE_LANGFUSE", "True").lower()
+            os.getenv(
+                "EVAL_USE_LANGFUSE", f"{DEFAULT_SETTING_EVAL_USE_LANGFUSE}"
+            ).lower()
             in ["true", "yes", "t", "y", "on"]
         )
 
@@ -550,7 +601,6 @@ def update_llm_settings():
                 st.session_state.embed_model = embed_model = CohereEmbedding(
                     cohere_api_key=st.session_state.settings_llm__cohere_api_key,
                     input_type="search_query",
-                    # embedding_type="binary",
                 )
             case st.session_state.const_llm_providers.openai:
                 st.session_state.client = OpenAI(
@@ -584,7 +634,7 @@ def update_llm_settings():
         if not st.session_state.first_run:
             require_force_index_rebuild()
         st.toast(
-            f":white_check_mark: Using {st.session_state.settings_llm__provider} {st.session_state.settings_llm__model} language model. {'Cohere Reranker enabled.' if st.session_state.settings_llm__provider == st.session_state.const_llm_providers.cohere else ''}"
+            f":white_check_mark: Using {st.session_state.settings_llm__provider} {st.session_state.settings_llm__model} language model. {'Cohere Reranker enabled.' if st.session_state.settings_llm__provider == st.session_state.const_llm_providers.cohere else 'Sentence transformer reranker enabled.'}"
         )
         st.session_state.llm_provider_switched = False
     except Exception as llm_e:
@@ -639,7 +689,7 @@ def update_graphdb_settings():
         else:
             st.session_state.storage_context.graph_store = SimpleGraphStore()
         st.toast(
-            ":warning: Neo4j graph database is disabled. Reverting to in-memory storage."
+            ":warning: Neo4j graph database is disabled. Switching to in-memory storage."
         )
 
 
@@ -703,7 +753,7 @@ def update_document_index_store_settings():
             st.session_state.storage_context.docstore = SimpleDocumentStore()
             st.session_state.storage_context.index_store = SimpleIndexStore()
         st.toast(
-            ":warning: Redis index and document store is disabled. Reverting to in-memory storage."
+            ":warning: Redis index and document store is disabled. Switching to in-memory storage."
         )
 
 
@@ -770,20 +820,26 @@ def initialise_shadow_llm_provider():
 def initialise_llm_provider():
     """Initialise the language model provider."""
     if "settings_llm__provider" not in st.session_state:
-        st.session_state.settings_llm__provider = os.getenv("LLM_PROVIDER", "Ollama")
+        st.session_state.settings_llm__provider = os.getenv(
+            "LLM_PROVIDER", f"{DEFAULT_SETTING_LLM_PROVIDER}"
+        )
     if "settings_llm__cohere_api_key" not in st.session_state:
         st.session_state.settings_llm__cohere_api_key = os.getenv("COHERE_API_KEY")
     if "settings_llm__openai_api_key" not in st.session_state:
         st.session_state.settings_llm__openai_api_key = os.getenv("OPENAI_API_KEY")
     if "settings_llm__ollama_url" not in st.session_state:
         st.session_state.settings_llm__ollama_url = os.getenv(
-            "OLLAMA_URL", "http://localhost:11434"
+            "OLLAMA_URL", f"{DEFAULT_SETTING_OLLAMA_URL}"
         )
-    st.session_state.settings_llm__model_cohere = os.getenv("COHERE_MODEL", "command")
-    st.session_state.settings_llm__model_openai = os.getenv(
-        "OPENAI_MODEL", "gpt-3.5-turbo"
+    st.session_state.settings_llm__model_cohere = os.getenv(
+        "COHERE_MODEL", f"{DEFAULT_SETTING_COHERE_MODEL}"
     )
-    st.session_state.settings_llm__model_ollama = os.getenv("OLLAMA_MODEL", "mistral")
+    st.session_state.settings_llm__model_openai = os.getenv(
+        "OPENAI_MODEL", f"{DEFAULT_SETTING_OPENAI_MODEL}"
+    )
+    st.session_state.settings_llm__model_ollama = os.getenv(
+        "OLLAMA_MODEL", f"{DEFAULT_SETTING_OLLAMA_MODEL}"
+    )
 
 
 def load_settings():

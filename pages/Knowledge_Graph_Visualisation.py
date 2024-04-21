@@ -56,7 +56,7 @@ st.markdown(
 
     :bulb: To ensure that you are seeing the visualisation of the graph 
     of the presently used index, press the `Visualise knowledge graph` button 
-    in the TLDRLC Chatbot application.
+    in the TLDRLC Chatbot page.
     """
 )
 
@@ -67,5 +67,5 @@ if "data__kg_html" in st.session_state.keys():
     )
 else:
     st.error(
-        ":x: No knowledge graph data found. Please generate the knowledge graph first."
+        ":x: No knowledge graph data found. Generate the knowledge graph first from the Chatbot page."
     )

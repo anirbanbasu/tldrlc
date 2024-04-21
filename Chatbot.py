@@ -538,7 +538,9 @@ if len(st.session_state.messages) > 0:
 
 # Chatbot
 # col1_heading, col2_export, col3_delete = col2_main.columns([3, 2, 1])
-col2_main.markdown("## Chat about the data")
+chatbot_heading, chatbot_status = col2_main.columns(2)
+chatbot_heading.markdown("## Chat about the data")
+status_placeholder = chatbot_status.empty()
 
 if "chatbot" in st.session_state and st.session_state.chatbot is not None:
     container_chat = col2_main.container(height=UI_CHAT_CONTAINER_HEIGHT, border=1)
@@ -557,11 +559,15 @@ if "chatbot" in st.session_state and st.session_state.chatbot is not None:
         with container_chat.chat_message(CHAT_KEY_VALUE_USER):
             st.markdown(prompt)
         with container_chat.chat_message(CHAT_KEY_VALUE_ASSISTANT):
+            status_placeholder.info(
+                f":balloon: Using **{st.session_state.settings_llm__provider}**: {st.session_state.settings_llm__model}",
+            )
             with st.empty():
                 st.markdown("Figuring out how to respond...")
                 response = st.write_stream(
                     stream_wrapper(st.session_state.chatbot.stream_chat(prompt))
                 )
+            status_placeholder.write("")
         # Add response to message history
         st.session_state.messages.append(
             {

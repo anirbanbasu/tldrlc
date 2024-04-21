@@ -268,6 +268,7 @@ with st.expander("**Graph visualisation**", expanded=False):
         step=1,
         key="shadow__settings_kgvis__max_nodes",
         help="The maximum number of nodes, starting with the most connected ones, to display in the visualisation.",
+        on_change=update_graph_visualisation_settings,
     )
     st.slider(
         "Height (in pixels)",
@@ -283,9 +284,11 @@ with st.expander("**Graph visualisation**", expanded=False):
         options=["circular", "planar", "shell", "spectral", "spring"],
         key="shadow__settings_kgvis__layout",
         help="The visual layout mode of the knowledge graph.",
+        on_change=update_graph_visualisation_settings,
     )
     st.checkbox(
         "Physics enabled",
         key="shadow__settings_kgvis__physics_enabled",
         help="If checked, the physics simulation will be enabled for the knowledge graph rendering.",
+        on_change=update_graph_visualisation_settings,
     )

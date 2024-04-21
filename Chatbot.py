@@ -292,7 +292,7 @@ col1_wikipedia_prefix.selectbox(
     format_func=format_wikipedia_languages,
     key="shadow__ui__selectbox_wikipedia_prefix",
     disabled=st.session_state.shadow__ui__radio_source_type != SOURCE_TYPE_WIKIPEDIA,
-    help="Select the Wikipedia language prefix (defaults to `en: English`). Check supported languages here: [List of Wikipedias](https://en.wikipedia.org/wiki/List_of_Wikipedias).",
+    help="Select the Wikipedia language prefix (defaults to `en: English`). _Only available for selection if you use `Wikipedia` as the input source._ Check supported languages here: [List of Wikipedias](https://en.wikipedia.org/wiki/List_of_Wikipedias).",
     on_change=copy_shadow_ui_widget_session_keys,
 )
 

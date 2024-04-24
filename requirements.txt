@@ -2,8 +2,8 @@ async-timeout==4.0.3
 chevron==0.14.0
 exceptiongroup==1.2.1
 jsonpatch==1.33
-langfuse==2.27.0
-llama-index==0.10.30
+langfuse==2.27.1
+llama-index==0.10.31
 llama-index-embeddings-cohere==0.1.8
 llama-index-embeddings-ollama==0.1.2
 llama-index-graph-stores-neo4j==0.1.4
@@ -11,7 +11,7 @@ llama-index-llms-cohere==0.1.6
 llama-index-llms-ollama==0.1.2
 llama-index-postprocessor-cohere-rerank==0.1.4
 llama-index-readers-papers==0.1.4
-llama-index-readers-web==0.1.9
+llama-index-readers-web==0.1.10
 llama-index-readers-wikipedia==0.1.4
 llama-index-storage-docstore-redis==0.1.2
 llama-index-storage-index-store-redis==0.1.2

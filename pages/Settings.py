@@ -74,7 +74,7 @@ with st.expander("**Language model**", expanded=False):
                 "Cohere API key",
                 type="password",
                 key="shadow__settings_llm__cohere_api_key",
-                help="The API key for Cohere.",
+                help="The API key for Cohere. You can get one by signing up or signing in at [Cohere](https://cohere.com/).",
                 on_change=update_cohere_apikey,
             )
             st.session_state.shadow__settings_llm__model = (
@@ -85,7 +85,7 @@ with st.expander("**Language model**", expanded=False):
                 "Open AI API key",
                 type="password",
                 key="shadow__settings_llm__openai_api_key",
-                help="The API key for Open AI.",
+                help="The API key for Open AI. You can get one by signing up or signing in at [Open AI](https://platform.openai.com/).",
                 on_change=update_openai_apikey,
             )
             st.session_state.shadow__settings_llm__model = (

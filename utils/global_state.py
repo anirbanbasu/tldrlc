@@ -65,18 +65,34 @@ logging.basicConfig(
 global_settings_initialised: solara.Reactive[bool] = solara.reactive(False)
 
 """ Language model settings """
-global_settings__language_model_provider: solara.Reactive[str] = solara.reactive(constants.EMPTY_STRING)
-global_settings__cohere_api_key: solara.Reactive[str] = solara.reactive(constants.EMPTY_STRING)
-global_settings__cohere_model: solara.Reactive[str] = solara.reactive(constants.EMPTY_STRING)
-global_settings__openai_model: solara.Reactive[str] = solara.reactive(constants.EMPTY_STRING)
-global_settings__openai_api_key: solara.Reactive[str] = solara.reactive(constants.EMPTY_STRING)
-global_settings__ollama_url: solara.Reactive[str] = solara.reactive(constants.EMPTY_STRING)
-global_settings__ollama_model: solara.Reactive[str] = solara.reactive(constants.EMPTY_STRING)
+global_settings__language_model_provider: solara.Reactive[str] = solara.reactive(
+    constants.EMPTY_STRING
+)
+global_settings__cohere_api_key: solara.Reactive[str] = solara.reactive(
+    constants.EMPTY_STRING
+)
+global_settings__cohere_model: solara.Reactive[str] = solara.reactive(
+    constants.EMPTY_STRING
+)
+global_settings__openai_model: solara.Reactive[str] = solara.reactive(
+    constants.EMPTY_STRING
+)
+global_settings__openai_api_key: solara.Reactive[str] = solara.reactive(
+    constants.EMPTY_STRING
+)
+global_settings__ollama_url: solara.Reactive[str] = solara.reactive(
+    constants.EMPTY_STRING
+)
+global_settings__ollama_model: solara.Reactive[str] = solara.reactive(
+    constants.EMPTY_STRING
+)
 global_settings__llm_temperature: solara.Reactive[float] = solara.reactive(0.0)
 global_settings__llm_chunk_size: solara.Reactive[int] = solara.reactive(0)
 global_settings__llm_chunk_overlap: solara.Reactive[int] = solara.reactive(0)
 global_settings__llm_request_timeout: solara.Reactive[int] = solara.reactive(0)
-global_settings__llm_system_message: solara.Reactive[str] = solara.reactive(constants.EMPTY_STRING)
+global_settings__llm_system_message: solara.Reactive[str] = solara.reactive(
+    constants.EMPTY_STRING
+)
 
 """ Index and chat settings """
 
@@ -85,25 +101,41 @@ global_settings__index_max_triplets_per_chunk: solara.Reactive[int] = solara.rea
 global_settings__index_include_embeddings: solara.Reactive[bool] = solara.reactive(
     False
 )
-global_settings__index_chat_mode: solara.Reactive[str] = solara.reactive(constants.EMPTY_STRING)
+global_settings__index_chat_mode: solara.Reactive[str] = solara.reactive(
+    constants.EMPTY_STRING
+)
 
 """ Neo4j settings """
 global_settings__neo4j_disable: solara.Reactive[bool] = solara.reactive(False)
-global_settings__neo4j_url: solara.Reactive[str] = solara.reactive(constants.EMPTY_STRING)
-global_settings__neo4j_username: solara.Reactive[str] = solara.reactive(constants.EMPTY_STRING)
-global_settings__neo4j_password: solara.Reactive[str] = solara.reactive(constants.EMPTY_STRING)
-global_settings__neo4j_db_name: solara.Reactive[str] = solara.reactive(constants.EMPTY_STRING)
+global_settings__neo4j_url: solara.Reactive[str] = solara.reactive(
+    constants.EMPTY_STRING
+)
+global_settings__neo4j_username: solara.Reactive[str] = solara.reactive(
+    constants.EMPTY_STRING
+)
+global_settings__neo4j_password: solara.Reactive[str] = solara.reactive(
+    constants.EMPTY_STRING
+)
+global_settings__neo4j_db_name: solara.Reactive[str] = solara.reactive(
+    constants.EMPTY_STRING
+)
 
 """ Redis settings """
 global_settings__redis_disable: solara.Reactive[bool] = solara.reactive(False)
-global_settings__redis_url: solara.Reactive[str] = solara.reactive(constants.EMPTY_STRING)
-global_settings__redis_namespace: solara.Reactive[str] = solara.reactive(constants.EMPTY_STRING)
+global_settings__redis_url: solara.Reactive[str] = solara.reactive(
+    constants.EMPTY_STRING
+)
+global_settings__redis_namespace: solara.Reactive[str] = solara.reactive(
+    constants.EMPTY_STRING
+)
 
 """ Knowledge graph visualisation settings """
 global_settings__kg_vis_height: solara.Reactive[int] = solara.reactive(0)
 global_settings__kg_vis_max_nodes: solara.Reactive[int] = solara.reactive(0)
 global_settings__kg_vis_max_depth: solara.Reactive[int] = solara.reactive(0)
-global_settings__kg_vis_layout: solara.Reactive[str] = solara.reactive(constants.EMPTY_STRING)
+global_settings__kg_vis_layout: solara.Reactive[str] = solara.reactive(
+    constants.EMPTY_STRING
+)
 
 """ LlamaIndex Settings objects """
 global_llamaindex_storage_context: solara.Reactive[StorageContext] = solara.reactive(
@@ -129,17 +161,20 @@ global_knowledge_graph_index: solara.Reactive[KnowledgeGraphIndex] = solara.reac
 global_chat_engine: solara.Reactive[BaseChatEngine] = solara.reactive(None)
 global_chat_messages: solara.Reactive[List[MessageDict]] = solara.reactive([])
 
+
 def md5_hash(some_string):
     return hashlib.md5(some_string.encode(constants.CHAR_ENCODING_UTF8)).hexdigest()
+
 
 def setup_langfuse():
     """Setup (or, disable) Langfuse for performance evaluation."""
     use_langfuse = bool(
-            os.getenv(
-                constants.ENV_KEY_EVAL_USE_LANGFUSE, constants.DEFAULT_SETTING_EVAL_USE_LANGFUSE
-            ).lower()
-            in ["true", "yes", "t", "y", "on"]
-        )
+        os.getenv(
+            constants.ENV_KEY_EVAL_USE_LANGFUSE,
+            constants.DEFAULT_SETTING_EVAL_USE_LANGFUSE,
+        ).lower()
+        in ["true", "yes", "t", "y", "on"]
+    )
     if use_langfuse:
         langfuse__secret_key = os.getenv(constants.ENV_KEY_LANGFUSE_SECRET_KEY)
         langfuse__public_key = os.getenv(constants.ENV_KEY_LANGFUSE_PUBLIC_KEY)
@@ -152,7 +187,9 @@ def setup_langfuse():
             )
             langfuse.auth_check()
             # Setup LangFuse tags for the handler, if necessary
-            env__langfuse_trace_tags = os.getenv(constants.ENV_KEY_LANGFUSE_TRACE_TAGS, None)
+            env__langfuse_trace_tags = os.getenv(
+                constants.ENV_KEY_LANGFUSE_TRACE_TAGS, None
+            )
             langfuse_trace_tags = None
             if env__langfuse_trace_tags is not None:
                 langfuse_trace_tags = [
@@ -165,9 +202,7 @@ def setup_langfuse():
                 host=langfuse__host,
                 tags=langfuse_trace_tags,
             )
-            Settings.callback_manager = CallbackManager(
-                [langfuse_callback_handler]
-            )
+            Settings.callback_manager = CallbackManager([langfuse_callback_handler])
             logger.warning(
                 f"Using Langfuse at {langfuse__host} for performance evaluation."
             )
@@ -324,7 +359,8 @@ def initialise_default_settings():
         )
         global_settings__llm_chunk_size.value = int(
             os.getenv(
-                constants.ENV_KEY_LLM_CHUNK_SIZE, constants.DEFAULT_SETTING_LLM_CHUNK_SIZE
+                constants.ENV_KEY_LLM_CHUNK_SIZE,
+                constants.DEFAULT_SETTING_LLM_CHUNK_SIZE,
             )
         )
         global_settings__llm_chunk_overlap.value = int(

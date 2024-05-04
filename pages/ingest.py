@@ -234,8 +234,8 @@ async def ingest_arxiv_data():
         ingested_documents.value = []
         reader = ArxivReader()
         show_status_message(
-                message=f"**Fetching** results of arXiv query `{arxiv_query.value}`.",
-            )
+            message=f"**Fetching** results of arXiv query `{arxiv_query.value}`.",
+        )
         ingested_documents.value = reader.load_data(
             papers_dir=global_state.md5_hash(
                 f"{datetime.datetime.now()}-{random.random()}"
@@ -371,6 +371,7 @@ async def ingest_pdfurl_data():
         )
         logger.error(f"Error ingesting PDF (URL). {str(e)}")
 
+
 @task
 async def load_existing_indices():
     """Load the existing indices from the storage context."""
@@ -390,7 +391,9 @@ async def load_existing_indices():
                     index_id=index_ids[0],
                 )
             else:
-                raise NotImplementedError("Loading multiple indices is not yet supported.")
+                raise NotImplementedError(
+                    "Loading multiple indices is not yet supported."
+                )
                 # Check: https://github.com/run-llama/llama_index/discussions/13233
                 show_status_message(
                     message=f"""
@@ -420,6 +423,7 @@ async def load_existing_indices():
             timeout=8,
         )
         logger.error(f"Error loading indice(s). {str(e)}")
+
 
 def load_wikipedia_languages():
     """Load the list of supported Wikipedia languages."""
@@ -454,6 +458,7 @@ def ExistingIndicesSourceComponent():
                 disabled=load_existing_indices.pending or not existing_indices.value,
             )
             solara.ProgressLinear(load_existing_indices.pending)
+
 
 @solara.component
 def WikipediaSourceComponent():
@@ -504,7 +509,11 @@ def WikipediaSourceComponent():
                     last_ingested_data_source.value == constants.SOURCE_TYPE_WIKIPEDIA
                     and len(ingested_documents.value) > 0
                 ):
-                    with rv.ExpansionPanels(inset=True, hover=True, value=0 if len(ingested_documents.value) == 1 else None):
+                    with rv.ExpansionPanels(
+                        inset=True,
+                        hover=True,
+                        value=0 if len(ingested_documents.value) == 1 else None,
+                    ):
                         solara.Text(
                             f"Fetched {len(ingested_documents.value)} Wikipedia {'articles' if len(ingested_documents.value) > 1 else 'article'}"
                         )
@@ -547,24 +556,24 @@ def ArxivSourceComponent():
             )
         solara.ProgressLinear(ingest_arxiv_data.pending)
         if (
-                    last_ingested_data_source.value == constants.SOURCE_TYPE_ARXIV
-                    and len(ingested_documents.value) > 0
-                ):
-                    with rv.ExpansionPanels(
-                        inset=True,
-                        hover=True,
-                        value=0 if len(ingested_documents.value) == 1 else None,
-                    ):
-                        solara.Text(
-                            f"Fetched {len(ingested_documents.value)} {'pages' if len(ingested_documents.value) > 1 else 'page'} of PDF as a result of the arXiv query `{arxiv_query.value}`."
-                        )
-                        for doc in ingested_documents.value:
-                            with rv.ExpansionPanel():
-                                with rv.ExpansionPanelHeader():
-                                    solara.Markdown(f"**PDF page**: {doc.doc_id}")
-                                with rv.ExpansionPanelContent():
-                                    with solara.Column():
-                                        solara.Markdown(f"{doc.text}")
+            last_ingested_data_source.value == constants.SOURCE_TYPE_ARXIV
+            and len(ingested_documents.value) > 0
+        ):
+            with rv.ExpansionPanels(
+                inset=True,
+                hover=True,
+                value=0 if len(ingested_documents.value) == 1 else None,
+            ):
+                solara.Text(
+                    f"Fetched {len(ingested_documents.value)} {'pages' if len(ingested_documents.value) > 1 else 'page'} of PDF as a result of the arXiv query `{arxiv_query.value}`."
+                )
+                for doc in ingested_documents.value:
+                    with rv.ExpansionPanel():
+                        with rv.ExpansionPanelHeader():
+                            solara.Markdown(f"**PDF page**: {doc.doc_id}")
+                        with rv.ExpansionPanelContent():
+                            with solara.Column():
+                                solara.Markdown(f"{doc.text}")
 
 
 @solara.component
@@ -591,24 +600,24 @@ def PubmedSourceComponent():
             )
         solara.ProgressLinear(ingest_pubmed_data.pending)
         if (
-                    last_ingested_data_source.value == constants.SOURCE_TYPE_PUBMED
-                    and len(ingested_documents.value) > 0
-                ):
-                    with rv.ExpansionPanels(
-                        inset=True,
-                        hover=True,
-                        value=0 if len(ingested_documents.value) == 1 else None,
-                    ):
-                        solara.Text(
-                            f"Fetched {len(ingested_documents.value)} {'articles' if len(ingested_documents.value) > 1 else 'article'} as a result of the Pubmed query `{pubmed_query.value}`."
-                        )
-                        for doc in ingested_documents.value:
-                            with rv.ExpansionPanel():
-                                with rv.ExpansionPanelHeader():
-                                    solara.Markdown(f"**Article**: {doc.doc_id}")
-                                with rv.ExpansionPanelContent():
-                                    with solara.Column():
-                                        solara.Markdown(f"{doc.text}")
+            last_ingested_data_source.value == constants.SOURCE_TYPE_PUBMED
+            and len(ingested_documents.value) > 0
+        ):
+            with rv.ExpansionPanels(
+                inset=True,
+                hover=True,
+                value=0 if len(ingested_documents.value) == 1 else None,
+            ):
+                solara.Text(
+                    f"Fetched {len(ingested_documents.value)} {'articles' if len(ingested_documents.value) > 1 else 'article'} as a result of the Pubmed query `{pubmed_query.value}`."
+                )
+                for doc in ingested_documents.value:
+                    with rv.ExpansionPanel():
+                        with rv.ExpansionPanelHeader():
+                            solara.Markdown(f"**Article**: {doc.doc_id}")
+                        with rv.ExpansionPanelContent():
+                            with solara.Column():
+                                solara.Markdown(f"{doc.text}")
 
 
 @solara.component
@@ -693,6 +702,7 @@ def WebpageSourceComponent():
                                                 f"[{doc.doc_id}]({doc.doc_id})"
                                             )
 
+
 @solara.component
 def PDFURLSourceComponent():
     """Component for selecting a PDF (URL) as data source."""
@@ -717,42 +727,38 @@ def PDFURLSourceComponent():
             )
             solara.ProgressLinear(ingest_pdfurl_data.pending)
             if (
-                    last_ingested_data_source.value == constants.SOURCE_TYPE_PDF
-                    and len(ingested_documents.value) > 0
+                last_ingested_data_source.value == constants.SOURCE_TYPE_PDF
+                and len(ingested_documents.value) > 0
+            ):
+                with rv.ExpansionPanels(
+                    inset=True,
+                    hover=True,
+                    value=0 if len(ingested_documents.value) == 1 else None,
                 ):
-                    with rv.ExpansionPanels(
-                        inset=True,
-                        hover=True,
-                        value=0 if len(ingested_documents.value) == 1 else None,
-                    ):
-                        solara.Text(
-                            f"Fetched {len(ingested_documents.value)} {'pages' if len(ingested_documents.value) > 1 else 'page'} from the PDF at {pdf_url.value}."
-                        )
-                        for doc in ingested_documents.value:
-                            with rv.ExpansionPanel():
-                                with rv.ExpansionPanelHeader():
-                                    solara.Markdown(f"**Page**: {doc.doc_id}")
-                                with rv.ExpansionPanelContent():
-                                    with solara.Column():
-                                        solara.Markdown(f"{doc.text}")
+                    solara.Text(
+                        f"Fetched {len(ingested_documents.value)} {'pages' if len(ingested_documents.value) > 1 else 'page'} from the PDF at {pdf_url.value}."
+                    )
+                    for doc in ingested_documents.value:
+                        with rv.ExpansionPanel():
+                            with rv.ExpansionPanelHeader():
+                                solara.Markdown(f"**Page**: {doc.doc_id}")
+                            with rv.ExpansionPanelContent():
+                                with solara.Column():
+                                    solara.Markdown(f"{doc.text}")
 
 
 @solara.component
 def Page():
     """Main settings page."""
     # Remove the "This website runs on Solara" message
-    solara.Style(
-        constants.UI_SOLARA_NOTICE_REMOVE
-    )
+    solara.Style(constants.UI_SOLARA_NOTICE_REMOVE)
     global_state.initialise_default_settings()
 
     with solara.Head():
         solara.Title("Data ingestion")
 
     with solara.AppBarTitle():
-        solara.Markdown(
-            "# Ingest data", style={"color": "#FFFFFF"}
-        )
+        solara.Markdown("# Ingest data", style={"color": "#FFFFFF"})
 
     with solara.AppBar():
         solara.lab.ThemeToggle()

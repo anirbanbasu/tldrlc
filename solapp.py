@@ -16,10 +16,11 @@
 
 import solara
 
-from pages import chatbot, ingest, settings
+from pages import chatbot, ingest, kg, settings
 
 routes = [
     solara.Route(path="/", component=chatbot.Page, label="Chatbot"),
     solara.Route(path="ingest", component=ingest.Page, label="Ingest data"),
+    solara.Route(path="kg", component=kg.Page, label="Knowledge graph visualisation"),
     solara.Route(path="settings", component=settings.Page, label="Settings"),
 ]

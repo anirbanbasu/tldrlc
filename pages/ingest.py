@@ -384,7 +384,7 @@ async def load_existing_indices():
             elif len(index_ids) == 1:
                 show_status_message(
                     message=f"**Loading** index with ID _{index_ids[0]}_.",
-                    timeout=0,
+                    # timeout=0,
                 )
                 global_state.global_knowledge_graph_index.value = load_index_from_storage(
                     storage_context=global_state.global_llamaindex_storage_context.value,

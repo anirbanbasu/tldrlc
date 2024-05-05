@@ -136,6 +136,7 @@ global_settings__kg_vis_max_depth: solara.Reactive[int] = solara.reactive(0)
 global_settings__kg_vis_layout: solara.Reactive[str] = solara.reactive(
     constants.EMPTY_STRING
 )
+global_settings__kg_vis_physics_enabled: solara.Reactive[bool] = solara.reactive(False)
 
 """ LlamaIndex Settings objects """
 global_llamaindex_storage_context: solara.Reactive[StorageContext] = solara.reactive(
@@ -460,6 +461,13 @@ def initialise_default_settings():
         )
         global_settings__kg_vis_layout.value = os.getenv(
             constants.ENV_KEY_KG_VIS_LAYOUT, constants.DEFAULT_SETTING_KG_VIS_LAYOUT
+        )
+        global_settings__kg_vis_physics_enabled.value = bool(
+            os.getenv(
+                constants.ENV_KEY_KG_VIS_PHYSICS_ENABLED,
+                constants.DEFAULT_SETTING_KG_VIS_PHYSICS_ENABLED,
+            ).lower()
+            in ["true", "yes", "t", "y", "on"]
         )
 
         setup_langfuse()

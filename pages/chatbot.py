@@ -160,7 +160,7 @@ def Page():
             style={
                 "width": "100%",
                 "max-height": "80vh",
-                "overflow-y": "scroll",
+                "overflow-y": "auto",
                 "overflow-x": "hidden",
             }
         ):

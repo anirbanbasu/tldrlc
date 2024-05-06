@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# ** This Dockerfile is for use with Ploomber cloud deployment **
-
 # Pull Python 3.12 on Debian Bookworm slim image
 FROM python:3.12.3-slim-bookworm
 
@@ -39,12 +37,14 @@ RUN /app/venv/bin/pip install -r requirements.txt --no-cache-dir
 
 # Copy the project files
 COPY ./*.md ./LICENSE ./
+COPY ./*.sh ./
+RUN chmod +x *.sh
 COPY ./.env.docker ./.env
 COPY ./*.py ./
 COPY ./pages/*.py ./pages/
 COPY ./utils/*.py ./utils/
 
 # Expose the port to conect
-EXPOSE 80
+EXPOSE 8765
 # Run the application
-ENTRYPOINT ["solara", "run", "solapp.py", "--host=0.0.0.0", "--port=80", "--production"]
+ENTRYPOINT [ "/app/run_starlette.sh" ]

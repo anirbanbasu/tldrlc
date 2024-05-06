@@ -1,6 +1,6 @@
 {
-    "id": "falling-salad-5976",
-    "type": "docker",
+    "id": "delicate-tree-4909",
+    "type": "solara",
     "resources": {
         "cpu": 1.0,
         "ram": 2,

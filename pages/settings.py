@@ -44,6 +44,11 @@ logging.basicConfig(
 def LLMSettingsComponent():
     """Component for the language model settings."""
 
+    def update_llm_system_message(callback_data: Any = None):
+        """Update the system message for the language model."""
+        global_state.global_settings__llm_system_message.set(callback_data)
+        global_state.update_llm_settings(callback_data=callback_data)
+
     with solara.Card(
         title="Language model provider and language model",
         subtitle="""
@@ -138,12 +143,14 @@ def LLMSettingsComponent():
             tick_labels="end_points",
             on_value=global_state.update_llm_settings,
         )
-
         rv.Textarea(
             label="System message",
+            clearable=True,
+            counter=True,
+            no_resize=True,
             v_model=global_state.global_settings__llm_system_message.value,
-            on_v_model=global_state.global_settings__llm_system_message.set,
-            rows=2,
+            on_v_model=update_llm_system_message,
+            rows=4,
         )
     # update_llm_settings()
 
@@ -347,6 +354,10 @@ def GraphVisualisationSettingsComponent():
         """,
         elevation=0,
     ):
+        solara.Checkbox(
+            label="Enable physics. This may be a bad idea for large graphs.",
+            value=global_state.global_settings__kg_vis_physics_enabled,
+        )
         solara.SliderInt(
             label="Height (in pixels)",
             min=500,

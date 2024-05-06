@@ -23,8 +23,6 @@ jobs:
       - name: Deploy
         env:
           PLOOMBER_CLOUD_KEY: ${{ secrets.PLOOMBER_CLOUD_KEY }}
-          LANGFUSE_PUBLIC_KEY: ${{ secrets.LANGFUSE_PUBLIC_KEY }}
-          LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
         run: |
           ploomber-cloud deploy --watch-incremental
         # The --watch-incremental flag will print deployment status and deployment

@@ -1,4 +1,10 @@
 {
     "id": "falling-salad-5976",
-    "type": "docker"
+    "type": "docker",
+    "resources": {
+        "cpu": 1.0,
+        "ram": 2,
+        "gpu": 0
+    },
+    "labels": ["solara","tldrlc"]
 }

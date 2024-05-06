@@ -68,7 +68,7 @@ If you wish to use [Langfuse](https://langfuse.com/) for performance evaluation 
 ## Usage
 
 ### On your computer
-Once you have installed the dependencies mentioned above in your Python virtual environment, to run the chatbot, execute `solara run solapp.py`. It will automatically open a browser (unless you have a headless terminal) to the chatbot application. An alternative way of running the app is by executing the script `run_starlette.sh`, which will load the app using the [Starlette framework](https://www.starlette.io/) on the Asynchronous Server Gateway Interface (ASGI) server, [uvicorn](https://www.uvicorn.org/).
+Once you have installed the dependencies mentioned above in your Python virtual environment, to run the chatbot, execute `solara run app.py`. It will automatically open a browser (unless you have a headless terminal) to the chatbot application. An alternative way of running the app is by executing the script `run_starlette.sh`, which will load the app using the [Starlette framework](https://www.starlette.io/) on the Asynchronous Server Gateway Interface (ASGI) server, [uvicorn](https://www.uvicorn.org/).
 
 Some settings can be modified through the app's web interface. All settings can be modified by using a local `.env` file or as environment variables. A comprehensive list of the supported environment variables is available in the `.env.template` file in this repository, which can serve as a starting point.
 

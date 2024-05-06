@@ -14,4 +14,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-SOLARA_APP=solapp.py uvicorn --workers 4 --host 0.0.0.0 --port 8765 solara.server.starlette:app
+SOLARA_APP=app.py uvicorn --workers 4 --host 0.0.0.0 --port 8765 solara.server.starlette:app

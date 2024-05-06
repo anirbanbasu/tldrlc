@@ -16,7 +16,7 @@
 FROM python:3.12.3-slim-bookworm
 
 # Upgrade and install basic packages
-RUN apt-get update && apt-get -y upgrade && apt-get -y dist-upgrade && apt-get -y install nano build-essential
+RUN apt-get update && apt-get -y install nano build-essential
 
 # Set the working directory in the container
 WORKDIR /app
@@ -27,20 +27,18 @@ COPY ./requirements.txt ./
 # Setup Virtual environment
 RUN python -m venv /app/venv
 RUN /app/venv/bin/python -m ensurepip
-RUN /app/venv/bin/pip install --no-cache --upgrade pip setuptools
+RUN /app/venv/bin/pip install --no-cache-dir --upgrade pip setuptools
 
 ENV PATH="/app/venv/bin:$PATH"
 ENV VIRTUAL_ENV="/app/venv"
 
 # Install dependencies
-RUN /app/venv/bin/pip install -r requirements.txt --no-cache-dir
+RUN /app/venv/bin/pip install --no-cache-dir -r requirements.txt
 
 # Copy the project files
-COPY ./*.md ./LICENSE ./
-COPY ./*.sh ./
+COPY ./*.md ./LICENSE ./*.py ./*.sh ./
 RUN chmod +x *.sh
 COPY ./.env.docker ./.env
-COPY ./*.py ./
 COPY ./pages/*.py ./pages/
 COPY ./utils/*.py ./utils/
 

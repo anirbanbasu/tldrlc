@@ -2,9 +2,7 @@ name: Ploomber Cloud
 
 on:
   push:
-    branches:
-      # only deploy from the main branch
-      - main
+    branches: [ "master" ]
 
 jobs:
   deploy-to-ploomber-cloud:

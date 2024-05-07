@@ -500,11 +500,11 @@ def initialise_default_settings():
 
 def update_openai_apikey(callback_data: Any = None):
     """Update the OpenAI API key in the OS environment variable."""
-    os.environ[constants.ENV_KEY_OPENAI_API_KEY] = global_settings__openai_api_key
+    os.environ[constants.ENV_KEY_OPENAI_API_KEY] = global_settings__openai_api_key.value
     update_llm_settings()
 
 
 def update_cohere_apikey(callback_data: Any = None):
     """Update the Cohere API key in the OS environment variable."""
-    os.environ[constants.ENV_KEY_COHERE_API_KEY] = global_settings__cohere_api_key
+    os.environ[constants.ENV_KEY_COHERE_API_KEY] = global_settings__cohere_api_key.value
     update_llm_settings()

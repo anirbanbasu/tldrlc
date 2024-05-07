@@ -32,7 +32,9 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(
     # See formatting attributes: https://docs.python.org/3/library/logging.html#logrecord-attributes
     format=constants.LOG_FORMAT,
-    level=int(os.getenv(constants.ENV_KEY_LOG_LEVEL)),
+    level=int(
+        os.getenv(constants.ENV_KEY_LOG_LEVEL, constants.DEFAULT_SETTING_LOG_LEVEL)
+    ),
     encoding=constants.CHAR_ENCODING_UTF8,
 )
 

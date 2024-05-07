@@ -14,6 +14,7 @@
 
 """Solara global reactive state variables."""
 
+import time
 import solara
 import os
 from dotenv import load_dotenv
@@ -57,9 +58,26 @@ logger = logging.getLogger(__name__)
 
 logging.basicConfig(
     format=constants.LOG_FORMAT,
-    level=int(os.getenv(constants.ENV_KEY_LOG_LEVEL)),
+    level=int(
+        os.getenv(constants.ENV_KEY_LOG_LEVEL, constants.DEFAULT_SETTING_LOG_LEVEL)
+    ),
     encoding=constants.CHAR_ENCODING_UTF8,
 )
+
+status_message: solara.Reactive[str] = solara.reactive(constants.EMPTY_STRING)
+status_message_colour: solara.Reactive[str] = solara.reactive(constants.EMPTY_STRING)
+status_message_show: solara.Reactive[bool] = solara.reactive(False)
+
+
+def show_status_message(message: str, colour: str = "info", timeout: int = 4):
+    """Show a status message on the page."""
+    status_message.value = message
+    status_message_colour.value = colour
+    status_message_show.value = True
+    if timeout > 0:
+        time.sleep(timeout)
+        status_message_show.value = False
+
 
 """ General settings """
 global_settings_initialised: solara.Reactive[bool] = solara.reactive(False)

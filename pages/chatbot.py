@@ -20,9 +20,11 @@ import logging
 
 import solara
 import solara.lab
+from solara.alias import rv
 
 import utils.constants as constants
 import utils.global_state as global_state
+from utils.global_state import show_status_message
 from llama_index.core import Settings
 
 logger = logging.getLogger(__name__)
@@ -30,41 +32,13 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(
     # See formatting attributes: https://docs.python.org/3/library/logging.html#logrecord-attributes
     format=constants.LOG_FORMAT,
-    level=int(os.getenv(constants.ENV_KEY_LOG_LEVEL)),
+    level=int(
+        os.getenv(constants.ENV_KEY_LOG_LEVEL, constants.DEFAULT_SETTING_LOG_LEVEL)
+    ),
     encoding=constants.CHAR_ENCODING_UTF8,
 )
 
-
-def no_chat_engine_message():
-    global_state.global_chat_messages.value = [
-        {
-            constants.CHAT_KEY_ROLE: constants.CHAT_KEY_VALUE_ASSISTANT,
-            constants.CHAT_KEY_CONTENT: "_**The chat engine is not available. Please check the settings and then ingest some data to initialise the chat engine.**_",
-            constants.CHAT_KEY_TIMESTAMP: f"{datetime.datetime.now()}",
-            constants.CHAT_KEY_LLM_PROVIDER: global_state.global_settings__language_model_provider.value[
-                :
-            ],
-            constants.CHAT_KEY_LLM_MODEL_NAME: Settings.llm.metadata.model_name[:],
-        },
-    ]
-
-
-def add_chunk_to_ai_message(chunk: str):
-    global_state.global_chat_messages.value = [
-        *global_state.global_chat_messages.value[:-1],
-        {
-            constants.CHAT_KEY_ROLE: constants.CHAT_KEY_VALUE_ASSISTANT,
-            constants.CHAT_KEY_CONTENT: global_state.global_chat_messages.value[-1][
-                constants.CHAT_KEY_CONTENT
-            ]
-            + chunk,
-            constants.CHAT_KEY_TIMESTAMP: f"{datetime.datetime.now()}",
-            constants.CHAT_KEY_LLM_PROVIDER: global_state.global_settings__language_model_provider.value[
-                :
-            ],
-            constants.CHAT_KEY_LLM_MODEL_NAME: Settings.llm.metadata.model_name[:],
-        },
-    ]
+exported_chat_json: solara.Reactive[str] = solara.Reactive(constants.EMPTY_STRING)
 
 
 def stream_wrapper(streaming_response):
@@ -91,6 +65,40 @@ def Page():
         == constants.CHAT_KEY_VALUE_USER
     )
 
+    def clear_chat_history():
+        """Clear the chat history."""
+        global_state.global_chat_messages.value = []
+
+    def no_chat_engine_message():
+        global_state.global_chat_messages.value = [
+            {
+                constants.CHAT_KEY_ROLE: constants.CHAT_KEY_VALUE_ASSISTANT,
+                constants.CHAT_KEY_CONTENT: "_**The chat engine is not available. Please check the settings and then ingest some data to initialise the chat engine.**_",
+                constants.CHAT_KEY_TIMESTAMP: f"{datetime.datetime.now()}",
+                constants.CHAT_KEY_LLM_PROVIDER: global_state.global_settings__language_model_provider.value[
+                    :
+                ],
+                constants.CHAT_KEY_LLM_MODEL_NAME: Settings.llm.metadata.model_name[:],
+            },
+        ]
+
+    def add_chunk_to_ai_message(chunk: str):
+        global_state.global_chat_messages.value = [
+            *global_state.global_chat_messages.value[:-1],
+            {
+                constants.CHAT_KEY_ROLE: constants.CHAT_KEY_VALUE_ASSISTANT,
+                constants.CHAT_KEY_CONTENT: global_state.global_chat_messages.value[-1][
+                    constants.CHAT_KEY_CONTENT
+                ]
+                + chunk,
+                constants.CHAT_KEY_TIMESTAMP: f"{datetime.datetime.now()}",
+                constants.CHAT_KEY_LLM_PROVIDER: global_state.global_settings__language_model_provider.value[
+                    :
+                ],
+                constants.CHAT_KEY_LLM_MODEL_NAME: Settings.llm.metadata.model_name[:],
+            },
+        ]
+
     def ask_tldrlc(message):
         if len(global_state.global_chat_messages.value) == 1:
             # Remove the only not-initialised status message from the chatbot
@@ -112,28 +120,36 @@ def Page():
             ]
 
     def call_chat_engine():
-        if not has_unanswered_messages:
-            return
-        if global_state.global_chat_engine.value is None:
-            no_chat_engine_message()
-            return
-        response = global_state.global_chat_engine.value.stream_chat(
-            global_state.global_chat_messages.value[-1][constants.CHAT_KEY_CONTENT]
-        )
-        global_state.global_chat_messages.value = [
-            *global_state.global_chat_messages.value,
-            {
-                constants.CHAT_KEY_ROLE: constants.CHAT_KEY_VALUE_ASSISTANT,
-                constants.CHAT_KEY_CONTENT: constants.EMPTY_STRING,
-                constants.CHAT_KEY_TIMESTAMP: f"{datetime.datetime.now()}",
-                constants.CHAT_KEY_LLM_PROVIDER: global_state.global_settings__language_model_provider.value[
-                    :
+        try:
+            if not has_unanswered_messages:
+                return
+            if global_state.global_chat_engine.value is None:
+                no_chat_engine_message()
+                return
+            response = global_state.global_chat_engine.value.stream_chat(
+                message=global_state.global_chat_messages.value[-1][
+                    constants.CHAT_KEY_CONTENT
                 ],
-                constants.CHAT_KEY_LLM_MODEL_NAME: Settings.llm.metadata.model_name[:],
-            },
-        ]
-        for chunk in response.response_gen:
-            add_chunk_to_ai_message(chunk)
+            )
+            global_state.global_chat_messages.value = [
+                *global_state.global_chat_messages.value,
+                {
+                    constants.CHAT_KEY_ROLE: constants.CHAT_KEY_VALUE_ASSISTANT,
+                    constants.CHAT_KEY_CONTENT: constants.EMPTY_STRING,
+                    constants.CHAT_KEY_TIMESTAMP: f"{datetime.datetime.now()}",
+                    constants.CHAT_KEY_LLM_PROVIDER: global_state.global_settings__language_model_provider.value[
+                        :
+                    ],
+                    constants.CHAT_KEY_LLM_MODEL_NAME: Settings.llm.metadata.model_name[
+                        :
+                    ],
+                },
+            ]
+            for chunk in response.response_gen:
+                add_chunk_to_ai_message(chunk)
+        except Exception as e:
+            logger.error(f"Error with chat engine. {e}")
+            show_status_message(f"Error in chat engine. {e}", colour="error")
 
     task_get_chat_response = solara.lab.use_task(
         call_chat_engine, dependencies=[has_unanswered_messages]
@@ -146,6 +162,16 @@ def Page():
 
     with solara.AppBar():
         solara.lab.ThemeToggle()
+
+    with rv.Snackbar(
+        top=True,
+        right=True,
+        timeout=0,
+        multi_line=True,
+        color=global_state.status_message_colour.value,
+        v_model=global_state.status_message_show.value,
+    ):
+        solara.Markdown(f"{global_state.status_message.value}")
 
     with solara.Column(
         style={
@@ -212,6 +238,14 @@ def Page():
                         )
             if task_get_chat_response.pending:
                 solara.Markdown(":thinking: _Thinking of a response..._")
+            if exported_chat_json.value:
+                solara.Markdown(
+                    f"""
+                                ```json
+                                {exported_chat_json.value}
+                                ```        
+                                """
+                )
         with solara.Row(
             justify="space-between",
             style={"border-top": "1px solid black", "border-radius": "0px"},
@@ -224,6 +258,12 @@ def Page():
                 substitute for professional advice. If you are unsure about any information, please 
                 consult a professional in the field.
                 """,
+            )
+            solara.Button(
+                label="Clear chat",
+                on_click=clear_chat_history,
+                color="error",
+                style={"margin-top": "auto", "margin-bottom": "auto"},
             )
             solara.lab.ChatInput(
                 send_callback=ask_tldrlc,

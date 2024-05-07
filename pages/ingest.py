@@ -14,7 +14,6 @@
 
 import base64
 import os
-import time
 from typing import List
 import random
 import datetime
@@ -43,6 +42,7 @@ import wikipedia
 from linkpreview import Link, LinkPreview, LinkGrabber
 
 import utils.global_state as global_state
+from utils.global_state import show_status_message
 import utils.constants as constants
 
 logger = logging.getLogger(__name__)
@@ -50,7 +50,9 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(
     # See formatting attributes: https://docs.python.org/3/library/logging.html#logrecord-attributes
     format=constants.LOG_FORMAT,
-    level=int(os.getenv(constants.ENV_KEY_LOG_LEVEL)),
+    level=int(
+        os.getenv(constants.ENV_KEY_LOG_LEVEL, constants.DEFAULT_SETTING_LOG_LEVEL)
+    ),
     encoding=constants.CHAR_ENCODING_UTF8,
 )
 
@@ -74,20 +76,6 @@ ingested_documents: solara.Reactive[List[Document]] = solara.reactive([])
 last_ingested_data_source: solara.Reactive[str] = solara.reactive(
     constants.EMPTY_STRING
 )
-
-status_message: solara.Reactive[str] = solara.reactive(constants.EMPTY_STRING)
-status_message_colour: solara.Reactive[str] = solara.reactive(constants.EMPTY_STRING)
-status_message_show: solara.Reactive[bool] = solara.reactive(False)
-
-
-def show_status_message(message: str, colour: str = "info", timeout: int = 4):
-    """Show a status message on the page."""
-    status_message.value = message
-    status_message_colour.value = colour
-    status_message_show.value = True
-    if timeout > 0:
-        time.sleep(timeout)
-        status_message_show.value = False
 
 
 def load_remote_pdf_data(pdf_url: str) -> List[Document]:
@@ -766,13 +754,12 @@ def Page():
     with rv.Snackbar(
         top=True,
         right=True,
-        # timeout=status_message_timeout.value,
         timeout=0,
         multi_line=True,
-        color=status_message_colour.value,
-        v_model=status_message_show.value,
+        color=global_state.status_message_colour.value,
+        v_model=global_state.status_message_show.value,
     ):
-        solara.Markdown(f"{status_message.value}")
+        solara.Markdown(f"{global_state.status_message.value}")
     with solara.lab.Tabs(vertical=True, grow=False, lazy=True):
         with solara.lab.Tab("Existing indices", icon_name="mdi-database"):
             ExistingIndicesSourceComponent()

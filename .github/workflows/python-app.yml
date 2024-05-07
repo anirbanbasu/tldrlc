@@ -5,8 +5,12 @@ name: Python ruff linter format-checker
 on:
   push:
     branches: [ "master" ]
+    paths:
+      - "**.py"
   pull_request:
     branches: [ "master" ]
+    paths:
+      - "**.py"
 
 permissions:
   contents: read

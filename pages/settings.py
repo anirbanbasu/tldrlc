@@ -71,7 +71,7 @@ def LLMSettingsComponent():
                     value=global_state.global_settings__cohere_api_key,
                     password=True,
                     message="You can get an API key from the Cohere website.",
-                    on_value=global_state.update_cohere_apikey,
+                    on_value=global_state.update_llm_settings,
                 )
                 solara.InputText(
                     label="Cohere model",
@@ -84,7 +84,7 @@ def LLMSettingsComponent():
                     value=global_state.global_settings__openai_api_key,
                     password=True,
                     message="You can get an API key from the Open AI website.",
-                    on_value=global_state.update_openai_apikey,
+                    on_value=global_state.update_llm_settings,
                 )
                 solara.InputText(
                     label="Open AI model",

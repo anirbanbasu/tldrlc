@@ -16,33 +16,40 @@
 FROM python:3.12.3-slim-bookworm
 
 # Upgrade and install basic packages
-RUN apt-get update && apt-get -y install nano build-essential
+RUN apt-get update && apt-get -y upgrade && apt-get -y install nano build-essential && apt-get -y autoremove
+
+# Create a non-root user
+RUN useradd -m -u 1000 app_user
+USER app_user
+
+ENV HOME="/home/app_user"
 
 # Set the working directory in the container
-WORKDIR /app
+WORKDIR $HOME/app
 
 # Copy only the requirements file to take advantage of layering (see: https://docs.cloud.ploomber.io/en/latest/user-guide/dockerfile.html)
-COPY ./requirements.txt ./
+COPY ./requirements.txt ./requirements.txt
 
 # Setup Virtual environment
-RUN python -m venv /app/venv
-RUN /app/venv/bin/python -m ensurepip
-RUN /app/venv/bin/pip install --no-cache-dir --upgrade pip setuptools
+ENV VIRTUAL_ENV="$HOME/app/venv"
+RUN python -m venv $VIRTUAL_ENV
+RUN $VIRTUAL_ENV/bin/python -m ensurepip
+RUN $VIRTUAL_ENV/bin/pip install --no-cache-dir --upgrade pip setuptools
 
-ENV PATH="/app/venv/bin:$PATH"
-ENV VIRTUAL_ENV="/app/venv"
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
 # Install dependencies
-RUN /app/venv/bin/pip install --no-cache-dir -r requirements.txt
+RUN $VIRTUAL_ENV/bin/pip install --no-cache-dir -r requirements.txt
 
 # Copy the project files
 COPY ./*.md ./LICENSE ./*.py ./*.sh ./
-RUN chmod +x *.sh
-COPY ./.env.docker ./.env
+COPY ./.env.docker /.env
 COPY ./pages/*.py ./pages/
 COPY ./utils/*.py ./utils/
+#RUN chown -R app_user:app_user $HOME/app
+#RUN chmod +x $HOME/app/*.sh
 
 # Expose the port to conect
 EXPOSE 8765
 # Run the application
-ENTRYPOINT [ "/app/run_starlette.sh" ]
+ENTRYPOINT [ "/home/app_user/app/run_starlette.sh" ]

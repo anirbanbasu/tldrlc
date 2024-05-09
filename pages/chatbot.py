@@ -156,12 +156,10 @@ def Page():
     )
 
     with solara.AppBarTitle():
-        solara.Markdown(
-            "# Too Long, Didn't Read, Let's Chat", style={"color": "#FFFFFF"}
+        solara.Text(
+            "Too Long, Didn't Read, Let's Chat",
+            style={"color": "#FFFFFF"},
         )
-
-    with solara.AppBar():
-        solara.lab.ThemeToggle()
 
     with rv.Snackbar(
         top=True,
@@ -172,6 +170,20 @@ def Page():
         v_model=global_state.status_message_show.value,
     ):
         solara.Markdown(f"{global_state.status_message.value}")
+
+    with solara.lab.ConfirmationDialog(
+        open=global_state.show_eu_ai_act_notice,
+        ok=constants.NOTICE_EU_AI_ACT__OK,
+        cancel=solara.Button(
+            constants.NOTICE_EU_AI_ACT__CANCEL, disabled=True, style={"display": "none"}
+        ),
+        title=constants.NOTICE_EU_AI_ACT__TITLE,
+        on_ok=lambda: global_state.show_eu_ai_act_notice.set(False),
+        persistent=True,
+    ):
+        solara.Markdown(
+            constants.NOTICE_EU_AI_ACT__MESSAGE,
+        )
 
     with solara.Column(
         style={
@@ -246,24 +258,16 @@ def Page():
                                 ```        
                                 """
                 )
-        with solara.Row(
-            justify="space-between",
-            style={"border-top": "1px solid black", "border-radius": "0px"},
-        ):
-            solara.Markdown(
-                """
-                :warning: **EU AI Act [Article 52](https://artificialintelligenceact.eu/article/52/) Transparency notice**:
-                By using this app, you are interacting with an artificial intelligence (AI) system. 
-                <u>You are advised not to take any of its responses as facts</u>. The AI system is not a 
-                substitute for professional advice. If you are unsure about any information, please 
-                consult a professional in the field.
-                """,
-            )
+        with solara.Column():
             solara.Button(
                 label="Clear chat",
                 on_click=clear_chat_history,
                 color="error",
-                style={"margin-top": "auto", "margin-bottom": "auto"},
+                style={
+                    "margin-top": "auto",
+                    "margin-bottom": "auto",
+                    "display": "none",  # Hide the button
+                },
             )
             solara.lab.ChatInput(
                 send_callback=ask_tldrlc,

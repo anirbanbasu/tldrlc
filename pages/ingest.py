@@ -461,8 +461,10 @@ def WikipediaSourceComponent():
                 """,
         elevation=0,
     ):
-        with solara.ColumnsResponsive([2, 10]):
-            with solara.Column(align="start"):
+        with solara.ColumnsResponsive(
+            default=[12], small=[12], medium=[3, 9], large=[2, 10], xlarge=[2, 10]
+        ):
+            with solara.Column(align="stretch"):
                 rv.Select(
                     label="Language prefix",
                     multiple=False,
@@ -619,8 +621,10 @@ def WebpageSourceComponent():
                 """,
         elevation=0,
     ):
-        with solara.ColumnsResponsive([2, 10]):
-            with solara.Column(align="start"):
+        with solara.ColumnsResponsive(
+            default=[12], small=[12], medium=[3, 9], large=[2, 10], xlarge=[2, 10]
+        ):
+            with solara.Column(align="stretch"):
                 solara.Select(
                     label="Web page reader",
                     values=constants.LIST_OF_WEBPAGE_READERS,
@@ -746,10 +750,7 @@ def Page():
         solara.Title("Data ingestion")
 
     with solara.AppBarTitle():
-        solara.Markdown("# Ingest data", style={"color": "#FFFFFF"})
-
-    with solara.AppBar():
-        solara.lab.ThemeToggle()
+        solara.Text("Ingest data", style={"color": "#FFFFFF"})
 
     with rv.Snackbar(
         top=True,
@@ -760,16 +761,43 @@ def Page():
         v_model=global_state.status_message_show.value,
     ):
         solara.Markdown(f"{global_state.status_message.value}")
-    with solara.lab.Tabs(vertical=True, grow=False, lazy=True):
-        with solara.lab.Tab("Existing indices", icon_name="mdi-database"):
-            ExistingIndicesSourceComponent()
-        with solara.lab.Tab("Web page", icon_name="mdi-web"):
-            WebpageSourceComponent()
-        with solara.lab.Tab("PDF (URL)", icon_name="mdi-file-pdf-box"):
-            PDFURLSourceComponent()
-        with solara.lab.Tab("Wikipedia", icon_name="mdi-bookshelf"):
-            WikipediaSourceComponent()
-        with solara.lab.Tab("arXiv", icon_name="mdi-book-open"):
-            ArxivSourceComponent()
-        with solara.lab.Tab("Pubmed", icon_name="mdi-book"):
-            PubmedSourceComponent()
+
+    with rv.ExpansionPanels(popout=True, hover=True, accordion=True):
+        with rv.ExpansionPanel():
+            with rv.ExpansionPanelHeader():
+                solara.Markdown(
+                    "**Existing indices**: _Load one or more indices saved on an external document and indices storage._"
+                )
+            with rv.ExpansionPanelContent():
+                ExistingIndicesSourceComponent()
+        with rv.ExpansionPanel():
+            with rv.ExpansionPanelHeader():
+                solara.Markdown("**Web page**: _Ingest one or more web pages._")
+            with rv.ExpansionPanelContent():
+                WebpageSourceComponent()
+        with rv.ExpansionPanel():
+            with rv.ExpansionPanelHeader():
+                solara.Markdown("**PDF (URL)**: _Ingest a PDF from a URL._")
+            with rv.ExpansionPanelContent():
+                PDFURLSourceComponent()
+        with rv.ExpansionPanel():
+            with rv.ExpansionPanelHeader():
+                solara.Markdown(
+                    "**Wikipedia**: _Ingest one or more Wikipedia articles in a specified language._"
+                )
+            with rv.ExpansionPanelContent():
+                WikipediaSourceComponent()
+        with rv.ExpansionPanel():
+            with rv.ExpansionPanelHeader():
+                solara.Markdown(
+                    "**arXiV**: _Ingest one or more articles from arXiV based on a search query._"
+                )
+            with rv.ExpansionPanelContent():
+                ArxivSourceComponent()
+        with rv.ExpansionPanel():
+            with rv.ExpansionPanelHeader():
+                solara.Markdown(
+                    "**Pubmed**: _Ingest one or more articles from Pubmed based on a search query._"
+                )
+            with rv.ExpansionPanelContent():
+                PubmedSourceComponent()

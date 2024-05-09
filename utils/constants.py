@@ -185,3 +185,13 @@ UI_SOLARA_NOTICE_REMOVE = """
             display: none !important;
         }
         """
+
+NOTICE_EU_AI_ACT__MESSAGE = """
+            By using this app, you are interacting with an artificial intelligence (AI) system. 
+            **You are advised not to take any of its responses as facts**. The AI system is not a 
+            substitute for professional advice. If you are unsure about any information, please 
+            consult a professional in the field.
+            """
+NOTICE_EU_AI_ACT__TITLE = "EU AI Act Transparency notice"
+NOTICE_EU_AI_ACT__OK = "Okay, understood."
+NOTICE_EU_AI_ACT__CANCEL = "Hide this button."

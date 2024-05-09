@@ -64,6 +64,8 @@ logging.basicConfig(
     encoding=constants.CHAR_ENCODING_UTF8,
 )
 
+show_eu_ai_act_notice: solara.Reactive[bool] = solara.Reactive(True)
+
 status_message: solara.Reactive[str] = solara.reactive(constants.EMPTY_STRING)
 status_message_colour: solara.Reactive[str] = solara.reactive(constants.EMPTY_STRING)
 status_message_show: solara.Reactive[bool] = solara.reactive(False)

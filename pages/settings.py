@@ -403,21 +403,41 @@ def Page():
         solara.Title("Settings")
 
     with solara.AppBarTitle():
-        solara.Markdown("# Settings", style={"color": "#FFFFFF"})
+        solara.Text("Settings", style={"color": "#FFFFFF"})
 
-    with solara.AppBar():
-        solara.lab.ThemeToggle()
-
-    with solara.lab.Tabs(vertical=True, grow=False):
-        with solara.lab.Tab("Language model", icon_name="mdi-face-agent"):
-            LLMSettingsComponent()
-        with solara.lab.Tab("Chatbot index", icon_name="mdi-book-open"):
-            ChatbotSettingsComponent()
-        with solara.lab.Tab("Graph storage", icon_name="mdi-graph-outline"):
-            GraphDBSettingsComponent()
-        with solara.lab.Tab(
-            "Documents and index storage", icon_name="mdi-file-document-outline"
-        ):
-            DocumentsIndexStorageSettingsComponent()
-        with solara.lab.Tab("Graph visualisation", icon_name="mdi-image-filter-none"):
-            GraphVisualisationSettingsComponent()
+    with rv.ExpansionPanels(popout=True, hover=True, accordion=True):
+        with rv.ExpansionPanel():
+            with rv.ExpansionPanelHeader():
+                solara.Markdown(
+                    "**Language model**: _This is where you adjust settings for the language model provider and the language model._"
+                )
+            with rv.ExpansionPanelContent():
+                LLMSettingsComponent()
+        with rv.ExpansionPanel():
+            with rv.ExpansionPanelHeader():
+                solara.Markdown(
+                    "**Chat index**: _This is where you adjust settings for the index, built from your selected data sources, that is used for the chat._"
+                )
+            with rv.ExpansionPanelContent():
+                ChatbotSettingsComponent()
+        with rv.ExpansionPanel():
+            with rv.ExpansionPanelHeader():
+                solara.Markdown(
+                    "**Graph storage**: _This is where you specify if an external graph storage should be used and how to connect to it._"
+                )
+            with rv.ExpansionPanelContent():
+                GraphDBSettingsComponent()
+        with rv.ExpansionPanel():
+            with rv.ExpansionPanelHeader():
+                solara.Markdown(
+                    "**Documents and indices storage**: _This is where you specify if an external storage for documents and indices should be used and how to connect to it._"
+                )
+            with rv.ExpansionPanelContent():
+                DocumentsIndexStorageSettingsComponent()
+        with rv.ExpansionPanel():
+            with rv.ExpansionPanelHeader():
+                solara.Markdown(
+                    "**Knowledge graph visualisation**: _This is where you adjust the parameters for the visualisation of the knowledge graph._"
+                )
+            with rv.ExpansionPanelContent():
+                GraphVisualisationSettingsComponent()

@@ -120,10 +120,21 @@ def Page():
     global_state.initialise_default_settings()
 
     with solara.AppBarTitle():
-        solara.Markdown("# Knowledge Graph Visualisation", style={"color": "#FFFFFF"})
+        solara.Text("Knowledge Graph Visualisation", style={"color": "#FFFFFF"})
 
-    with solara.AppBar():
-        solara.lab.ThemeToggle()
+    with solara.lab.ConfirmationDialog(
+        open=global_state.show_eu_ai_act_notice,
+        ok=constants.NOTICE_EU_AI_ACT__OK,
+        cancel=solara.Button(
+            constants.NOTICE_EU_AI_ACT__CANCEL, disabled=True, style={"display": "none"}
+        ),
+        title=constants.NOTICE_EU_AI_ACT__TITLE,
+        on_ok=lambda: global_state.show_eu_ai_act_notice.set(False),
+        persistent=True,
+    ):
+        solara.Markdown(
+            constants.NOTICE_EU_AI_ACT__MESSAGE,
+        )
 
     with solara.Column(
         style={
@@ -163,19 +174,3 @@ def Page():
                 solara.Warning(
                     label="No knowledge graph data is available. Ingest some data to initialise a knowledge graph."
                 )
-        solara.Markdown(
-            """
-            :warning: **EU AI Act [Article 52](https://artificialintelligenceact.eu/article/52/) Transparency notice**:
-            By using this app, you are interacting with an artificial intelligence (AI) system. 
-            <u>You are advised not to take any of its responses as facts</u>. The AI system is not a 
-            substitute for professional advice. If you are unsure about any information, please 
-            consult a professional in the field.
-            """,
-            style={
-                "margin-left": "auto",
-                "margin-right": "auto",
-                "width": "100%",
-                "border-top": "1px solid black",
-                "border-radius": "0px",
-            },
-        )

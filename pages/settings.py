@@ -434,10 +434,3 @@ def Page():
                 )
             with rv.ExpansionPanelContent():
                 DocumentsIndexStorageSettingsComponent()
-        with rv.ExpansionPanel():
-            with rv.ExpansionPanelHeader():
-                solara.Markdown(
-                    "**Knowledge graph visualisation**: _This is where you adjust the parameters for the visualisation of the knowledge graph._"
-                )
-            with rv.ExpansionPanelContent():
-                GraphVisualisationSettingsComponent()

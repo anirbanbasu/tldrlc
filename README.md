@@ -34,10 +34,8 @@ The currently installed packages can be upgraded and the `requirements.txt` upda
 
 ```
 sed 's/==.*$//' requirements.txt | xargs pip install --upgrade
-pip list -l --not-required --format=freeze > requirements.txt
+pip-autoremove -f > requirements.txt
 ```
-
-Note that while `pip freeze` outputs all the installed packages (in your virtual environment), `pip list --not-required --format=freeze` outputs only those that you installed, excluding those that were automatically retrieved as dependencies of those packages.
 
 ### Language model providers, documents, index and graph storage
 

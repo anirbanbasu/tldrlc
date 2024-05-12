@@ -56,6 +56,7 @@ def stream_wrapper(streaming_response):
 def Page():
     # Remove the "This website runs on Solara" message
     solara.Style(constants.UI_SOLARA_NOTICE_REMOVE)
+    global_state.set_theme_colours()
 
     global_state.initialise_default_settings()
 
@@ -160,6 +161,9 @@ def Page():
             "Too Long, Didn't Read, Let's Chat",
             style={"color": "#FFFFFF"},
         )
+
+    with solara.AppBar():
+        solara.lab.ThemeToggle()
 
     with rv.Snackbar(
         top=True,

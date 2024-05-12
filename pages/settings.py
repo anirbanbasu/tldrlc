@@ -147,14 +147,11 @@ def LLMSettingsComponent():
         )
         rv.Textarea(
             label="System message",
-            clearable=True,
-            counter=True,
             no_resize=True,
             v_model=global_state.global_settings__llm_system_message.value,
             on_v_model=update_llm_system_message,
             rows=4,
         )
-    # update_llm_settings()
 
 
 @solara.component
@@ -396,6 +393,7 @@ def Page():
     """Main settings page."""
     # Remove the "This website runs on Solara" message
     solara.Style(constants.UI_SOLARA_NOTICE_REMOVE)
+    global_state.set_theme_colours()
 
     global_state.initialise_default_settings()
 
@@ -404,6 +402,9 @@ def Page():
 
     with solara.AppBarTitle():
         solara.Text("Settings", style={"color": "#FFFFFF"})
+
+    with solara.AppBar():
+        solara.lab.ThemeToggle()
 
     with rv.ExpansionPanels(popout=True, hover=True, accordion=True):
         with rv.ExpansionPanel():

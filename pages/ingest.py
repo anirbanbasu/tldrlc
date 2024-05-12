@@ -744,6 +744,7 @@ def Page():
     """Main settings page."""
     # Remove the "This website runs on Solara" message
     solara.Style(constants.UI_SOLARA_NOTICE_REMOVE)
+    global_state.set_theme_colours()
     global_state.initialise_default_settings()
 
     with solara.Head():
@@ -751,6 +752,9 @@ def Page():
 
     with solara.AppBarTitle():
         solara.Text("Ingest data", style={"color": "#FFFFFF"})
+
+    with solara.AppBar():
+        solara.lab.ThemeToggle()
 
     with rv.Snackbar(
         top=True,

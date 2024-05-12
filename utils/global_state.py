@@ -29,6 +29,7 @@ from llama_index.core.storage.chat_store import BaseChatStore
 from llama_index.core.memory import ChatMemoryBuffer
 
 from typing import Any, List
+import solara.lab
 from typing_extensions import TypedDict
 
 import utils.constants as constants
@@ -498,3 +499,44 @@ def initialise_default_settings():
         update_index_documents_storage_context()
 
         global_settings_initialised.value = True
+
+
+def set_theme_colours():
+    """Set the theme colours for the Solara app."""
+    # solara.lab.theme.themes.light.primary = "#3E5F90"
+    # solara.lab.theme.themes.light.onPrimary = "#FFFFFF"
+    # solara.lab.theme.themes.light.secondary = "#555F71"
+    # solara.lab.theme.themes.light.onSecondary = "#FFFFFF"
+    # solara.lab.theme.themes.light.accent = "#00687B"
+    # solara.lab.theme.themes.light.onAccent = "#FFFFFF"
+    # solara.lab.theme.themes.light.info = "#00c3ff"
+    # solara.lab.theme.themes.light.success = "#a3e635"
+    # solara.lab.theme.themes.light.warning = "#facc15"
+    # solara.lab.theme.themes.light.error = "#f87171"
+
+    # solara.lab.theme.themes.dark.primary = "#A7C8FF"
+    # solara.lab.theme.themes.dark.onPrimary = "#04305F"
+    # solara.lab.theme.themes.dark.secondary = "#BDC7DC"
+    # solara.lab.theme.themes.dark.onSecondary = "#273141"
+    # solara.lab.theme.themes.dark.accent = "#85D2E8"
+    # solara.lab.theme.themes.dark.onAccent = "#003641"
+    # solara.lab.theme.themes.dark.info = "#1d4ed8"
+    # solara.lab.theme.themes.dark.success = "#15803d"
+    # solara.lab.theme.themes.dark.warning = "#b45309"
+    # solara.lab.theme.themes.dark.error = "#b91c1c"
+
+    solara.lab.theme.themes.light.primary = "#2196f3"
+    solara.lab.theme.themes.light.secondary = "#ff5722"
+    solara.lab.theme.themes.light.accent = "#607d8b"
+    solara.lab.theme.themes.light.error = "#f44336"
+    solara.lab.theme.themes.light.warning = "#ffc107"
+    solara.lab.theme.themes.light.info = "#00bcd4"
+    solara.lab.theme.themes.light.success = "#8bc34a"
+
+    solara.lab.theme.themes.dark.primary = "#673ab7"
+    solara.lab.theme.themes.dark.secondary = "#ff5722"
+    solara.lab.theme.themes.dark.accent = "#cddc39"
+    solara.lab.theme.themes.dark.error = "#f44336"
+    solara.lab.theme.themes.dark.warning = "#ffc107"
+    solara.lab.theme.themes.dark.info = "#00bcd4"
+    solara.lab.theme.themes.dark.success = "#8bc34a"

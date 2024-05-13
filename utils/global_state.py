@@ -40,7 +40,9 @@ from llama_index.core.storage.docstore import SimpleDocumentStore
 from llama_index.storage.index_store.redis import RedisIndexStore
 from llama_index.storage.docstore.redis import RedisDocumentStore
 from llama_index.storage.kvstore.redis import RedisKVStore
+from llama_index.vector_stores.redis import RedisVectorStore
 from llama_index.core.graph_stores.simple import SimpleGraphStore
+from llama_index.core.vector_stores.simple import SimpleVectorStore
 from llama_index.graph_stores.neo4j import Neo4jGraphStore
 from llama_index.core import Settings
 from llama_index.core.callbacks import CallbackManager
@@ -87,6 +89,9 @@ global_settings_initialised: solara.Reactive[bool] = solara.reactive(False)
 
 """ Language model settings """
 global_settings__language_model_provider: solara.Reactive[str] = solara.reactive(
+    constants.EMPTY_STRING
+)
+global_settings__llm_provider_notice: solara.Reactive[str] = solara.reactive(
     constants.EMPTY_STRING
 )
 global_settings__cohere_api_key: solara.Reactive[str] = solara.reactive(
@@ -250,6 +255,7 @@ def update_llm_settings(callback_data: Any = None):
                 cohere_api_key=global_settings__cohere_api_key.value,
                 input_type="search_query",
             )
+            global_settings__llm_provider_notice.value = "Cohere is being used as the language model provider. Ensure that you have set the Cohere API key correctly from the Settings page."
         case constants.LLM_PROVIDER_OPENAI:
             Settings.llm = OpenAI(
                 model=global_settings__openai_model.value,
@@ -257,6 +263,7 @@ def update_llm_settings(callback_data: Any = None):
                 system_prompt=global_settings__llm_system_message.value,
             )
             Settings.embed_model = OpenAIEmbedding()
+            global_settings__llm_provider_notice.value = "Open AI is being used as the language model provider. Ensure that you have set the Open AI API key correctly from the Settings page."
         case constants.LLM_PROVIDER_OLLAMA:
             Settings.llm = Ollama(
                 model=global_settings__ollama_model.value,
@@ -269,6 +276,7 @@ def update_llm_settings(callback_data: Any = None):
                 model_name=global_settings__ollama_model.value,
                 base_url=global_settings__ollama_url.value,
             )
+            global_settings__llm_provider_notice.value = constants.EMPTY_STRING
     Settings.chunk_size = global_settings__llm_chunk_size.value
     Settings.chunk_overlap = global_settings__llm_chunk_overlap.value
 
@@ -325,23 +333,57 @@ def update_index_documents_storage_context():
             redis_kvstore=kv_store,
             namespace=global_settings__redis_namespace.value,
         )
+        vector_store = RedisVectorStore(
+            redis_url=global_settings__redis_url.value,
+            overwrite=True,
+        )
         if global_llamaindex_storage_context.value is None:
             global_llamaindex_storage_context.value = StorageContext.from_defaults(
                 docstore=document_store,
                 index_store=index_store,
+                vector_store=vector_store,
             )
         else:
             global_llamaindex_storage_context.value.docstore = document_store
             global_llamaindex_storage_context.value.index_store = index_store
+            if (
+                global_llamaindex_storage_context.value.vector_stores.get(
+                    global_settings__redis_namespace.value
+                )
+                is None
+            ):
+                global_llamaindex_storage_context.value.add_vector_store(
+                    vector_store=vector_store,
+                    namespace=global_settings__redis_namespace.value,
+                )
+            else:
+                global_llamaindex_storage_context.value.vector_stores[
+                    global_settings__redis_namespace.value
+                ] = vector_store
     else:
         if global_llamaindex_storage_context.value is None:
             global_llamaindex_storage_context.value = StorageContext.from_defaults(
                 docstore=SimpleDocumentStore(),
                 index_store=SimpleIndexStore(),
+                vector_store=SimpleVectorStore(),
             )
         else:
             global_llamaindex_storage_context.value.docstore = SimpleDocumentStore()
             global_llamaindex_storage_context.value.index_store = SimpleIndexStore()
+            if (
+                global_llamaindex_storage_context.value.vector_stores.get(
+                    global_settings__redis_namespace.value
+                )
+                is None
+            ):
+                global_llamaindex_storage_context.value.add_vector_store(
+                    vector_store=SimpleVectorStore(),
+                    namespace=global_settings__redis_namespace.value,
+                )
+            else:
+                global_llamaindex_storage_context.value.vector_stores[
+                    global_settings__redis_namespace.value
+                ] = SimpleVectorStore()
 
 
 def initialise_default_settings():

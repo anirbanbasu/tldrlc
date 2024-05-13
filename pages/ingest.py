@@ -766,6 +766,14 @@ def Page():
     ):
         solara.Markdown(f"{global_state.status_message.value}")
 
+    if (
+        global_state.global_settings__llm_provider_notice.value
+        is not constants.EMPTY_STRING
+    ):
+        solara.Info(
+            icon=True, label=global_state.global_settings__llm_provider_notice.value
+        )
+
     with rv.ExpansionPanels(popout=True, hover=True, accordion=True):
         with rv.ExpansionPanel():
             with rv.ExpansionPanelHeader():

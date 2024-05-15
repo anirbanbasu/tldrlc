@@ -56,9 +56,6 @@ def stream_wrapper(streaming_response):
 def Page():
     # Remove the "This website runs on Solara" message
     solara.Style(constants.UI_SOLARA_NOTICE_REMOVE)
-    global_state.set_theme_colours()
-
-    global_state.initialise_default_settings()
 
     has_unanswered_messages = (
         len(global_state.global_chat_messages.value) > 0

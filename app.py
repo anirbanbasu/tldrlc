@@ -14,12 +14,30 @@
 
 """Main Solara app and routing."""
 
+from typing import Any
 import solara
 
 from pages import chatbot, ingest, settings
+from utils import global_state
+
+
+@solara.component
+def CustomLayout(children: Any = []):
+    global_state.set_theme_colours()
+    global_state.initialise_default_settings()
+
+    return solara.AppLayout(
+        children=children,
+        color=global_state.corrective_background_colour.value,
+        navigation=True,
+        sidebar_open=False,
+    )
+
 
 routes = [
-    solara.Route(path="/", component=chatbot.Page, label="Chatbot"),
+    solara.Route(
+        path="/", component=chatbot.Page, label="Chatbot", layout=CustomLayout
+    ),
     solara.Route(path="ingest", component=ingest.Page, label="Ingest data"),
     solara.Route(path="settings", component=settings.Page, label="Settings"),
 ]

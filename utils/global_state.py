@@ -543,6 +543,11 @@ def initialise_default_settings():
         global_settings_initialised.value = True
 
 
+corrective_background_colour: solara.Reactive[str] = solara.reactive(
+    constants.EMPTY_STRING
+)
+
+
 def set_theme_colours():
     """Set the theme colours for the Solara app."""
     # solara.lab.theme.themes.light.primary = "#3E5F90"
@@ -575,10 +580,16 @@ def set_theme_colours():
     solara.lab.theme.themes.light.info = "#00bcd4"
     solara.lab.theme.themes.light.success = "#8bc34a"
 
-    solara.lab.theme.themes.dark.primary = "#673ab7"
-    solara.lab.theme.themes.dark.secondary = "#ff5722"
+    solara.lab.theme.themes.dark.primary = "#ff5722"
+    solara.lab.theme.themes.dark.secondary = "#673ab7"
     solara.lab.theme.themes.dark.accent = "#cddc39"
     solara.lab.theme.themes.dark.error = "#f44336"
     solara.lab.theme.themes.dark.warning = "#ffc107"
     solara.lab.theme.themes.dark.info = "#00bcd4"
     solara.lab.theme.themes.dark.success = "#8bc34a"
+
+    corrective_background_colour.value = (
+        solara.lab.theme.themes.dark.secondary
+        if solara.lab.use_dark_effective()
+        else solara.lab.theme.themes.light.primary
+    )

@@ -744,8 +744,6 @@ def Page():
     """Main settings page."""
     # Remove the "This website runs on Solara" message
     solara.Style(constants.UI_SOLARA_NOTICE_REMOVE)
-    global_state.set_theme_colours()
-    global_state.initialise_default_settings()
 
     with solara.Head():
         solara.Title("Data ingestion")

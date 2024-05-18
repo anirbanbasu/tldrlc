@@ -189,7 +189,7 @@ def build_index_pipeline() -> bool:
     nest_asyncio.apply()
     chunk_nodes = pipeline.run(documents=ingested_documents.value, show_progress=True)
     show_status_message(
-        message=f"**Building index** from {len(chunk_nodes)} chunks extracted from {len(pipeline.docstore.docs)} document(s).",
+        message=f"**Building index** from {len(chunk_nodes)} chunks extracted from {len(ingested_documents.value)} document(s).",
         timeout=0,
     )
     global_state.global_knowledge_graph_index.value = KnowledgeGraphIndex(

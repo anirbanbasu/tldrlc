@@ -104,24 +104,6 @@ def LLMSettingsComponent():
                     message="The model must be available on the selected Ollama server.",
                     on_value=global_state.update_llm_settings,
                 )
-        solara.SliderInt(
-            label="Chunk size",
-            min=128,
-            max=4096,
-            step=64,
-            value=global_state.global_settings__llm_chunk_size,
-            tick_labels="end_points",
-            on_value=global_state.update_llm_settings,
-        )
-        solara.SliderInt(
-            label="Chunk overlap",
-            min=16,
-            max=128,
-            step=8,
-            value=global_state.global_settings__llm_chunk_overlap,
-            tick_labels="end_points",
-            on_value=global_state.update_llm_settings,
-        )
         solara.SliderFloat(
             label="Temperature",
             min=0.0,
@@ -136,15 +118,19 @@ def LLMSettingsComponent():
             tick_labels="end_points",
             on_value=global_state.update_llm_settings,
         )
-        solara.SliderInt(
-            label="LLM request timeout, in seconds",
-            min=60,
-            max=600,
-            step=30,
-            value=global_state.global_settings__llm_request_timeout,
-            tick_labels="end_points",
-            on_value=global_state.update_llm_settings,
-        )
+        if (
+            global_state.global_settings__language_model_provider.value
+            == constants.LLM_PROVIDER_OLLAMA
+        ):
+            solara.SliderInt(
+                label="Ollama timeout (in seconds)",
+                min=60,
+                max=600,
+                step=30,
+                value=global_state.global_settings__llm_request_timeout,
+                tick_labels="end_points",
+                on_value=global_state.update_llm_settings,
+            )
         rv.Textarea(
             label="System message",
             no_resize=True,
@@ -155,13 +141,104 @@ def LLMSettingsComponent():
 
 
 @solara.component
+def DataIngestionSettingsComponent():
+    """Component for the data ingestion settings."""
+
+    with solara.Card(
+        title="Data ingestion pipeline",
+        subtitle="""
+            The data ingestion pipeline is responsible for reading the data from your chosen data source
+            and processing it before creating an index.
+
+            The sentence splitter is the mandatory text pre-processor. Adding optional pre-processors will slow down 
+            the ingestion process. If you enable or disable a pre-processor after having ingested some data, 
+            you must refresh this browser page to reload the app and ingest the data again.
+            """,
+        elevation=0,
+    ):
+        solara.Markdown(
+            "**Sentence splitter** attempts to split text while respecting the boundaries of sentences."
+        )
+        solara.SliderInt(
+            label="Chunk size",
+            min=128,
+            max=4096,
+            step=64,
+            value=global_state.global_settings__data_ingestion_chunk_size,
+            tick_labels="end_points",
+            on_value=global_state.update_data_ingestion_settings,
+        )
+        solara.SliderInt(
+            label="Chunk overlap",
+            min=16,
+            max=128,
+            step=8,
+            value=global_state.global_settings__data_ingestion_chunk_overlap,
+            tick_labels="end_points",
+            on_value=global_state.update_data_ingestion_settings,
+        )
+        solara.Markdown(
+            "Optional **metadata extractors** attempt to extract metadata about the ingested data. These may help provide contextual information relevant to chunks of texts, especially in long documents. _Each of these makes calls to the large language model_."
+        )
+        solara.Checkbox(
+            label="Enable title extractor",
+            value=global_state.global_settings__di_enable_title_extractor,
+        )
+        if global_state.global_settings__di_enable_title_extractor.value:
+            solara.SliderInt(
+                label="Number of nodes to extract",
+                min=1,
+                max=10,
+                step=1,
+                value=global_state.global_settings__di_enable_title_extractor_nodes,
+                tick_labels="end_points",
+            )
+        solara.Checkbox(
+            label="Enable keyword extractor",
+            value=global_state.global_settings__di_enable_keyword_extractor,
+        )
+        if global_state.global_settings__di_enable_keyword_extractor.value:
+            solara.SliderInt(
+                label="Number of keywords to extract",
+                min=5,
+                max=25,
+                step=1,
+                value=global_state.global_settings__di_enable_keyword_extractor_keywords,
+                tick_labels="end_points",
+            )
+        solara.Checkbox(
+            label="Enable answerable questions extractor",
+            value=global_state.global_settings__di_enable_qa_extractor,
+        )
+        if global_state.global_settings__di_enable_qa_extractor.value:
+            solara.SliderInt(
+                label="Number of questions to extract",
+                min=1,
+                max=5,
+                step=1,
+                value=global_state.global_settings__di_enable_qa_extractor_questions,
+                tick_labels="end_points",
+            )
+        solara.Checkbox(
+            label="Enable summary extractor",
+            value=global_state.global_settings__di_enable_summary_extractor,
+        )
+        if global_state.global_settings__di_enable_summary_extractor.value:
+            solara.SelectMultiple(
+                label="Summaries to extract",
+                values=global_state.global_settings__di_enable_summary_extractor_summaries,
+                all_values=constants.LIST_OF_SUMMARY_EXTRACTOR_SUMMARIES,
+            )
+
+
+@solara.component
 def ChatbotSettingsComponent():
     """Component for the chatbot settings."""
 
     with solara.Card(
-        title="Chat and indexing",
+        title="Index, query and chat",
         subtitle="""
-            The chatbot settings control how the chatbot interacts with the user.
+            These settings control how the index is built as well as how it is queried.
             """,
         elevation=0,
     ):
@@ -265,8 +342,6 @@ def GraphDBSettingsComponent():
 
     if status.value is not None:
         solara.display(status.value)
-
-    # update_graph_storage_context()
 
 
 @solara.component
@@ -411,6 +486,13 @@ def Page():
                 )
             with rv.ExpansionPanelContent():
                 LLMSettingsComponent()
+        with rv.ExpansionPanel():
+            with rv.ExpansionPanelHeader():
+                solara.Markdown(
+                    "**Data ingestion**: _This is where you adjust settings for the data ingestion pipeline._"
+                )
+            with rv.ExpansionPanelContent():
+                DataIngestionSettingsComponent()
         with rv.ExpansionPanel():
             with rv.ExpansionPanelHeader():
                 solara.Markdown(

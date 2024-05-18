@@ -40,9 +40,10 @@ from llama_index.core.storage.docstore import SimpleDocumentStore
 from llama_index.storage.index_store.redis import RedisIndexStore
 from llama_index.storage.docstore.redis import RedisDocumentStore
 from llama_index.storage.kvstore.redis import RedisKVStore
-from llama_index.vector_stores.redis import RedisVectorStore
+
+# See: https://github.com/run-llama/llama_index/issues/10731#issuecomment-1946450169
+from llama_index.storage.kvstore.redis import RedisKVStore as RedisCache
 from llama_index.core.graph_stores.simple import SimpleGraphStore
-from llama_index.core.vector_stores.simple import SimpleVectorStore
 from llama_index.graph_stores.neo4j import Neo4jGraphStore
 from llama_index.core import Settings
 from llama_index.core.callbacks import CallbackManager
@@ -87,6 +88,9 @@ def show_status_message(message: str, colour: str = "info", timeout: int = 4):
 """ General settings """
 global_settings_initialised: solara.Reactive[bool] = solara.reactive(False)
 
+""" Document ingestion pipeline cache """
+global_cache__ingestion: solara.Reactive[RedisCache] = solara.reactive(None)
+
 """ Language model settings """
 global_settings__language_model_provider: solara.Reactive[str] = solara.reactive(
     constants.EMPTY_STRING
@@ -113,11 +117,35 @@ global_settings__ollama_model: solara.Reactive[str] = solara.reactive(
     constants.EMPTY_STRING
 )
 global_settings__llm_temperature: solara.Reactive[float] = solara.reactive(0.0)
-global_settings__llm_chunk_size: solara.Reactive[int] = solara.reactive(0)
-global_settings__llm_chunk_overlap: solara.Reactive[int] = solara.reactive(0)
+global_settings__data_ingestion_chunk_size: solara.Reactive[int] = solara.reactive(0)
+global_settings__data_ingestion_chunk_overlap: solara.Reactive[int] = solara.reactive(0)
 global_settings__llm_request_timeout: solara.Reactive[int] = solara.reactive(0)
 global_settings__llm_system_message: solara.Reactive[str] = solara.reactive(
     constants.EMPTY_STRING
+)
+
+""" Data ingestion settings """
+global_settings__di_enable_title_extractor: solara.Reactive[bool] = solara.reactive(
+    False
+)
+global_settings__di_enable_title_extractor_nodes: solara.Reactive[int] = (
+    solara.reactive(5)
+)
+global_settings__di_enable_keyword_extractor: solara.Reactive[bool] = solara.reactive(
+    False
+)
+global_settings__di_enable_keyword_extractor_keywords: solara.Reactive[int] = (
+    solara.reactive(10)
+)
+global_settings__di_enable_qa_extractor: solara.Reactive[bool] = solara.reactive(False)
+global_settings__di_enable_qa_extractor_questions: solara.Reactive[int] = (
+    solara.reactive(3)
+)
+global_settings__di_enable_summary_extractor: solara.Reactive[bool] = solara.reactive(
+    False
+)
+global_settings__di_enable_summary_extractor_summaries: solara.Reactive[List[str]] = (
+    solara.reactive(["self", "prev"])
 )
 
 """ Index and chat settings """
@@ -154,15 +182,6 @@ global_settings__redis_url: solara.Reactive[str] = solara.reactive(
 global_settings__redis_namespace: solara.Reactive[str] = solara.reactive(
     constants.EMPTY_STRING
 )
-
-""" Knowledge graph visualisation settings """
-global_settings__kg_vis_height: solara.Reactive[int] = solara.reactive(0)
-global_settings__kg_vis_max_nodes: solara.Reactive[int] = solara.reactive(0)
-global_settings__kg_vis_max_depth: solara.Reactive[int] = solara.reactive(0)
-global_settings__kg_vis_layout: solara.Reactive[str] = solara.reactive(
-    constants.EMPTY_STRING
-)
-global_settings__kg_vis_physics_enabled: solara.Reactive[bool] = solara.reactive(False)
 
 """ LlamaIndex Settings objects """
 global_llamaindex_storage_context: solara.Reactive[StorageContext] = solara.reactive(
@@ -241,6 +260,12 @@ def setup_langfuse():
         logger.warning("Not using Langfuse for performance evaluation.")
 
 
+def update_data_ingestion_settings(callback_data: Any = None):
+    """Update the global data ingestion settings based on the user inputs."""
+    Settings.chunk_size = global_settings__data_ingestion_chunk_size.value
+    Settings.chunk_overlap = global_settings__data_ingestion_chunk_overlap.value
+
+
 def update_llm_settings(callback_data: Any = None):
     """Update the global LlamaIndex settings based on the user inputs."""
     match global_settings__language_model_provider.value:
@@ -277,8 +302,6 @@ def update_llm_settings(callback_data: Any = None):
                 base_url=global_settings__ollama_url.value,
             )
             global_settings__llm_provider_notice.value = constants.EMPTY_STRING
-    Settings.chunk_size = global_settings__llm_chunk_size.value
-    Settings.chunk_overlap = global_settings__llm_chunk_overlap.value
 
 
 def update_chatbot_settings(callback_data: Any = None):
@@ -322,6 +345,9 @@ def update_graph_storage_context(gs: Neo4jGraphStore = None):
 
 def update_index_documents_storage_context():
     if not global_settings__redis_disable.value:
+        global_cache__ingestion.value = RedisCache(
+            redis_uri=global_settings__redis_url.value,
+        )
         kv_store = RedisKVStore(
             redis_uri=global_settings__redis_url.value,
         )
@@ -333,57 +359,24 @@ def update_index_documents_storage_context():
             redis_kvstore=kv_store,
             namespace=global_settings__redis_namespace.value,
         )
-        vector_store = RedisVectorStore(
-            redis_url=global_settings__redis_url.value,
-            overwrite=True,
-        )
         if global_llamaindex_storage_context.value is None:
             global_llamaindex_storage_context.value = StorageContext.from_defaults(
                 docstore=document_store,
                 index_store=index_store,
-                vector_store=vector_store,
             )
         else:
             global_llamaindex_storage_context.value.docstore = document_store
             global_llamaindex_storage_context.value.index_store = index_store
-            if (
-                global_llamaindex_storage_context.value.vector_stores.get(
-                    global_settings__redis_namespace.value
-                )
-                is None
-            ):
-                global_llamaindex_storage_context.value.add_vector_store(
-                    vector_store=vector_store,
-                    namespace=global_settings__redis_namespace.value,
-                )
-            else:
-                global_llamaindex_storage_context.value.vector_stores[
-                    global_settings__redis_namespace.value
-                ] = vector_store
     else:
+        global_cache__ingestion.value = None
         if global_llamaindex_storage_context.value is None:
             global_llamaindex_storage_context.value = StorageContext.from_defaults(
                 docstore=SimpleDocumentStore(),
                 index_store=SimpleIndexStore(),
-                vector_store=SimpleVectorStore(),
             )
         else:
             global_llamaindex_storage_context.value.docstore = SimpleDocumentStore()
             global_llamaindex_storage_context.value.index_store = SimpleIndexStore()
-            if (
-                global_llamaindex_storage_context.value.vector_stores.get(
-                    global_settings__redis_namespace.value
-                )
-                is None
-            ):
-                global_llamaindex_storage_context.value.add_vector_store(
-                    vector_store=SimpleVectorStore(),
-                    namespace=global_settings__redis_namespace.value,
-                )
-            else:
-                global_llamaindex_storage_context.value.vector_stores[
-                    global_settings__redis_namespace.value
-                ] = SimpleVectorStore()
 
 
 def initialise_default_settings():
@@ -421,18 +414,6 @@ def initialise_default_settings():
                 constants.DEFAULT_SETTING_LLM_TEMPERATURE,
             )
         )
-        global_settings__llm_chunk_size.value = int(
-            os.getenv(
-                constants.ENV_KEY_LLM_CHUNK_SIZE,
-                constants.DEFAULT_SETTING_LLM_CHUNK_SIZE,
-            )
-        )
-        global_settings__llm_chunk_overlap.value = int(
-            os.getenv(
-                constants.ENV_KEY_LLM_CHUNK_OVERLAP,
-                constants.DEFAULT_SETTING_LLM_CHUNK_OVERLAP,
-            )
-        )
         global_settings__llm_request_timeout.value = int(
             os.getenv(
                 constants.ENV_KEY_LLM_REQUEST_TIMEOUT,
@@ -443,6 +424,71 @@ def initialise_default_settings():
             constants.ENV_KEY_LLM_SYSTEM_MESSAGE,
             constants.DEFAULT_SETTING_LLM_SYSTEM_MESSAGE,
         )
+
+        """ Data ingestion settings """
+
+        global_settings__data_ingestion_chunk_size.value = int(
+            os.getenv(
+                constants.ENV_KEY_DI_CHUNK_SIZE,
+                constants.DEFAULT_SETTING_DI_CHUNK_SIZE,
+            )
+        )
+        global_settings__data_ingestion_chunk_overlap.value = int(
+            os.getenv(
+                constants.ENV_KEY_DI_CHUNK_OVERLAP,
+                constants.DEFAULT_SETTING_DI_CHUNK_OVERLAP,
+            )
+        )
+        global_settings__di_enable_title_extractor.value = bool(
+            os.getenv(
+                constants.ENV_KEY_DI_ENABLE_TITLE_EXTRACTOR,
+                constants.DEFAULT_SETTING_DI_ENABLE_TITLE_EXTRACTOR,
+            ).lower()
+            in ["true", "yes", "t", "y", "on"]
+        )
+        global_settings__di_enable_title_extractor_nodes.value = int(
+            os.getenv(
+                constants.ENV_KEY_DI_TITLE_EXTRACTOR_NODES,
+                constants.DEFAULT_SETTING_DI_TITLE_EXTRACTOR_NODES,
+            )
+        )
+        global_settings__di_enable_keyword_extractor.value = bool(
+            os.getenv(
+                constants.ENV_KEY_DI_ENABLE_KEYWORD_EXTRACTOR,
+                constants.DEFAULT_SETTING_DI_ENABLE_KEYWORD_EXTRACTOR,
+            ).lower()
+            in ["true", "yes", "t", "y", "on"]
+        )
+        global_settings__di_enable_keyword_extractor_keywords.value = int(
+            os.getenv(
+                constants.ENV_KEY_DI_KEYWORD_EXTRACTOR_KEYWORDS,
+                constants.DEFAULT_SETTING_DI_KEYWORD_EXTRACTOR_KEYWORDS,
+            )
+        )
+        global_settings__di_enable_qa_extractor.value = bool(
+            os.getenv(
+                constants.ENV_KEY_DI_ENABLE_QA_EXTRACTOR,
+                constants.DEFAULT_SETTING_DI_ENABLE_QA_EXTRACTOR,
+            ).lower()
+            in ["true", "yes", "t", "y", "on"]
+        )
+        global_settings__di_enable_qa_extractor_questions.value = int(
+            os.getenv(
+                constants.ENV_KEY_DI_QA_EXTRACTOR_QUESTIONS,
+                constants.DEFAULT_SETTING_DI_QA_EXTRACTOR_QUESTIONS,
+            )
+        )
+        global_settings__di_enable_summary_extractor.value = bool(
+            os.getenv(
+                constants.ENV_KEY_DI_ENABLE_SUMMARY_EXTRACTOR,
+                constants.DEFAULT_SETTING_DI_ENABLE_SUMMARY_EXTRACTOR,
+            ).lower()
+            in ["true", "yes", "t", "y", "on"]
+        )
+        global_settings__di_enable_summary_extractor_summaries.value = os.getenv(
+            constants.ENV_KEY_DI_SUMMARY_EXTRACTOR_SUMMARIES,
+            constants.DEFAULT_SETTING_DI_SUMMARY_EXTRACTOR_SUMMARIES,
+        ).split()
 
         """ Index and chat settings """
 
@@ -504,38 +550,10 @@ def initialise_default_settings():
             constants.ENV_KEY_REDIS_NAMESPACE, constants.DEFAULT_SETTING_REDIS_NAMESPACE
         )
 
-        """ Knowledge graph visualisation settings """
-        global_settings__kg_vis_height.value = int(
-            os.getenv(
-                constants.ENV_KEY_KG_VIS_HEIGHT, constants.DEFAULT_SETTING_KG_VIS_HEIGHT
-            )
-        )
-        global_settings__kg_vis_max_nodes.value = int(
-            os.getenv(
-                constants.ENV_KEY_KG_VIS_MAX_NODES,
-                constants.DEFAULT_SETTING_KG_VIS_MAX_NODES,
-            )
-        )
-        global_settings__kg_vis_max_depth.value = int(
-            os.getenv(
-                constants.ENV_KEY_KG_VIS_MAX_DEPTH,
-                constants.DEFAULT_SETTING_KG_VIS_MAX_DEPTH,
-            )
-        )
-        global_settings__kg_vis_layout.value = os.getenv(
-            constants.ENV_KEY_KG_VIS_LAYOUT, constants.DEFAULT_SETTING_KG_VIS_LAYOUT
-        )
-        global_settings__kg_vis_physics_enabled.value = bool(
-            os.getenv(
-                constants.ENV_KEY_KG_VIS_PHYSICS_ENABLED,
-                constants.DEFAULT_SETTING_KG_VIS_PHYSICS_ENABLED,
-            ).lower()
-            in ["true", "yes", "t", "y", "on"]
-        )
-
         setup_langfuse()
         # Update all the settings and create objects to be used by other pages and components
         update_llm_settings()
+        update_data_ingestion_settings()
         update_chatbot_settings()
         update_graph_storage_context()
         update_index_documents_storage_context()
@@ -550,27 +568,6 @@ corrective_background_colour: solara.Reactive[str] = solara.reactive(
 
 def set_theme_colours():
     """Set the theme colours for the Solara app."""
-    # solara.lab.theme.themes.light.primary = "#3E5F90"
-    # solara.lab.theme.themes.light.onPrimary = "#FFFFFF"
-    # solara.lab.theme.themes.light.secondary = "#555F71"
-    # solara.lab.theme.themes.light.onSecondary = "#FFFFFF"
-    # solara.lab.theme.themes.light.accent = "#00687B"
-    # solara.lab.theme.themes.light.onAccent = "#FFFFFF"
-    # solara.lab.theme.themes.light.info = "#00c3ff"
-    # solara.lab.theme.themes.light.success = "#a3e635"
-    # solara.lab.theme.themes.light.warning = "#facc15"
-    # solara.lab.theme.themes.light.error = "#f87171"
-
-    # solara.lab.theme.themes.dark.primary = "#A7C8FF"
-    # solara.lab.theme.themes.dark.onPrimary = "#04305F"
-    # solara.lab.theme.themes.dark.secondary = "#BDC7DC"
-    # solara.lab.theme.themes.dark.onSecondary = "#273141"
-    # solara.lab.theme.themes.dark.accent = "#85D2E8"
-    # solara.lab.theme.themes.dark.onAccent = "#003641"
-    # solara.lab.theme.themes.dark.info = "#1d4ed8"
-    # solara.lab.theme.themes.dark.success = "#15803d"
-    # solara.lab.theme.themes.dark.warning = "#b45309"
-    # solara.lab.theme.themes.dark.error = "#b91c1c"
 
     solara.lab.theme.themes.light.primary = "#2196f3"
     solara.lab.theme.themes.light.secondary = "#ff5722"

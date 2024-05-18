@@ -19,6 +19,7 @@ import random
 import datetime
 import requests
 import logging
+import nest_asyncio
 
 from llama_index.core.readers.base import BasePydanticReader
 from llama_index.readers.wikipedia import WikipediaReader
@@ -31,6 +32,14 @@ from llama_index.core import KnowledgeGraphIndex
 from llama_index.core import load_index_from_storage, load_indices_from_storage
 from llama_index.core import Settings
 from llama_index.core.node_parser import SentenceSplitter
+from llama_index.core.extractors import (
+    TitleExtractor,
+    SummaryExtractor,
+    KeywordExtractor,
+    QuestionsAnsweredExtractor,
+)
+from llama_index.core.schema import TransformComponent
+from llama_index.core.ingestion import IngestionPipeline, IngestionCache
 from llama_index.postprocessor.cohere_rerank import CohereRerank
 from llama_index.core.postprocessor import SentenceTransformerRerank
 
@@ -127,8 +136,79 @@ def initialise_chat_engine() -> bool:
         raise ValueError("Index from ingested documents is not available.")
 
 
+def build_index_pipeline() -> bool:
+    """Build the knowledge graph index from the documents using an ingestion pipeline."""
+    # Try to output some kind of progress bar state?
+    global ingested_documents
+    transformations: list[TransformComponent] = [
+        SentenceSplitter.from_defaults(
+            chunk_size=Settings.chunk_size,
+            chunk_overlap=Settings.chunk_overlap,
+            include_metadata=True,
+            include_prev_next_rel=True,
+        ),
+    ]
+    if global_state.global_settings__di_enable_title_extractor.value:
+        transformations.append(
+            TitleExtractor(
+                nodes=global_state.global_settings__di_enable_title_extractor_nodes.value
+            )
+        )
+    if global_state.global_settings__di_enable_keyword_extractor.value:
+        transformations.append(
+            KeywordExtractor(
+                keywords=global_state.global_settings__di_enable_keyword_extractor_keywords.value
+            )
+        )
+    if global_state.global_settings__di_enable_qa_extractor.value:
+        transformations.append(
+            QuestionsAnsweredExtractor(
+                questions=global_state.global_settings__di_enable_qa_extractor_questions.value
+            )
+        )
+    if global_state.global_settings__di_enable_summary_extractor.value:
+        transformations.append(
+            SummaryExtractor(
+                summaries=global_state.global_settings__di_enable_summary_extractor_summaries.value
+            )
+        )
+    pipeline = IngestionPipeline(
+        # disable_cache=True,
+        transformations=transformations,
+        cache=IngestionCache(
+            cache=global_state.global_cache__ingestion.value,
+        )
+        if global_state.global_cache__ingestion.value
+        else None,
+        # docstore=global_state.global_llamaindex_storage_context.value.docstore,
+    )
+    show_status_message(
+        message=f"**Running ingestion pipeline** to apply {len(pipeline.transformations)} transformation(s) on {len(ingested_documents.value)} document(s).",
+        timeout=0,
+    )
+    nest_asyncio.apply()
+    chunk_nodes = pipeline.run(documents=ingested_documents.value, show_progress=True)
+    show_status_message(
+        message=f"**Building index** from {len(chunk_nodes)} chunks extracted from {len(pipeline.docstore.docs)} document(s).",
+        timeout=0,
+    )
+    global_state.global_knowledge_graph_index.value = KnowledgeGraphIndex(
+        nodes=chunk_nodes,
+        llm=Settings.llm,
+        embed_model=Settings.embed_model,
+        storage_context=global_state.global_llamaindex_storage_context.value,
+        max_triplets_per_chunk=global_state.global_settings__index_max_triplets_per_chunk.value,
+        include_embeddings=global_state.global_settings__index_include_embeddings.value,
+        show_progress=True,
+    )
+    global_state.global_knowledge_graph_index.value.storage_context.docstore.add_documents(
+        chunk_nodes
+    )
+    return True
+
+
 def build_index() -> bool:
-    """Build the knowledge graph index from the documents."""
+    """Build the knowledge graph index from the documents. DEPRECATED: Use build_index_pipeline() instead."""
     # Try to output some kind of progress bar state?
     global ingested_documents
     chunk_parser = SentenceSplitter.from_defaults(
@@ -198,7 +278,7 @@ async def ingest_wikipedia_data():
                 auto_suggest=False,
             )
         last_ingested_data_source.value = constants.SOURCE_TYPE_WIKIPEDIA
-        initialisation_status = build_index()
+        initialisation_status = build_index_pipeline()
         initialisation_status = initialisation_status and initialise_chat_engine()
         if initialisation_status:
             show_status_message(
@@ -233,7 +313,7 @@ async def ingest_arxiv_data():
         last_ingested_data_source.value = constants.SOURCE_TYPE_ARXIV
         if len(ingested_documents.value) == 0:
             raise ValueError("No text extracted from the arXiv query.")
-        initialisation_status = build_index()
+        initialisation_status = build_index_pipeline()
         initialisation_status = initialisation_status and initialise_chat_engine()
         if initialisation_status:
             show_status_message(
@@ -265,7 +345,7 @@ async def ingest_pubmed_data():
         last_ingested_data_source.value = constants.SOURCE_TYPE_PUBMED
         if len(ingested_documents.value) == 0:
             raise ValueError("No text extracted from the Pubmed query.")
-        initialisation_status = build_index()
+        initialisation_status = build_index_pipeline()
         initialisation_status = initialisation_status and initialise_chat_engine()
         if initialisation_status:
             show_status_message(
@@ -313,7 +393,7 @@ async def ingest_webpage_data():
             urls=urls_list,
         )
         last_ingested_data_source.value = constants.SOURCE_TYPE_WEBPAGE
-        initialisation_status = build_index()
+        initialisation_status = build_index_pipeline()
         initialisation_status = initialisation_status and initialise_chat_engine()
         if initialisation_status:
             show_status_message(
@@ -344,7 +424,7 @@ async def ingest_pdfurl_data():
         last_ingested_data_source.value = constants.SOURCE_TYPE_PDF
         if len(ingested_documents.value) == 0:
             raise ValueError("No text extracted from the PDF.")
-        initialisation_status = build_index()
+        initialisation_status = build_index_pipeline()
         initialisation_status = initialisation_status and initialise_chat_engine()
         if initialisation_status:
             show_status_message(

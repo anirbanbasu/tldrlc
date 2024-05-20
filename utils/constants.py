@@ -15,6 +15,11 @@
 """Various constants used in the project."""
 
 EMPTY_STRING = ""
+BOOLEAN_AND = "AND"
+BOOLEAN_OR = "OR"
+BOOLEAN_NOT = "NOT"
+BOOLEAN_XOR = "XOR"
+
 ISO639SET1_LANGUAGE_ENGLISH = "en"
 
 CHAR_ENCODING_UTF8 = "utf-8"

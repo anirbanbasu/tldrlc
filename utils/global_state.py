@@ -24,7 +24,7 @@ import logging
 
 from llama_index.core.chat_engine.types import BaseChatEngine
 from llama_index.core import StorageContext
-from llama_index.core import KnowledgeGraphIndex
+from llama_index.core import KnowledgeGraphIndex, VectorStoreIndex
 from llama_index.core.storage.chat_store import BaseChatStore
 from llama_index.core.memory import ChatMemoryBuffer
 
@@ -38,6 +38,8 @@ from llama_index.core.storage.chat_store import SimpleChatStore
 from llama_index.core.storage.index_store import SimpleIndexStore
 from llama_index.core.storage.docstore import SimpleDocumentStore
 from llama_index.storage.index_store.redis import RedisIndexStore
+from llama_index.vector_stores.redis import RedisVectorStore
+from llama_index.core.vector_stores.simple import SimpleVectorStore
 from llama_index.storage.docstore.redis import RedisDocumentStore
 from llama_index.storage.kvstore.redis import RedisKVStore
 
@@ -114,6 +116,9 @@ global_settings__ollama_url: solara.Reactive[str] = solara.reactive(
     constants.EMPTY_STRING
 )
 global_settings__ollama_model: solara.Reactive[str] = solara.reactive(
+    constants.EMPTY_STRING
+)
+global_settings__embedding_model: solara.Reactive[str] = solara.reactive(
     constants.EMPTY_STRING
 )
 global_settings__llm_temperature: solara.Reactive[float] = solara.reactive(0.0)
@@ -204,6 +209,7 @@ class MessageDict(TypedDict):
 global_knowledge_graph_index: solara.Reactive[KnowledgeGraphIndex] = solara.reactive(
     None
 )
+global_knowledge_vector_index: solara.Reactive[VectorStoreIndex] = solara.reactive(None)
 global_chat_engine: solara.Reactive[BaseChatEngine] = solara.reactive(None)
 global_chat_messages: solara.Reactive[List[MessageDict]] = solara.reactive([])
 
@@ -302,6 +308,7 @@ def update_llm_settings(callback_data: Any = None):
                 base_url=global_settings__ollama_url.value,
             )
             global_settings__llm_provider_notice.value = constants.EMPTY_STRING
+    global_settings__embedding_model.value = Settings.embed_model.model_name
 
 
 def update_chatbot_settings(callback_data: Any = None):
@@ -343,7 +350,7 @@ def update_graph_storage_context(gs: Neo4jGraphStore = None):
             global_llamaindex_storage_context.value.graph_store = SimpleGraphStore()
 
 
-def update_index_documents_storage_context():
+def update_index_documents_vector_storage_context():
     if not global_settings__redis_disable.value:
         global_cache__ingestion.value = RedisCache(
             redis_uri=global_settings__redis_url.value,
@@ -359,24 +366,37 @@ def update_index_documents_storage_context():
             redis_kvstore=kv_store,
             namespace=global_settings__redis_namespace.value,
         )
+        vector_store = RedisVectorStore(redis_url=global_settings__redis_url.value)
         if global_llamaindex_storage_context.value is None:
             global_llamaindex_storage_context.value = StorageContext.from_defaults(
                 docstore=document_store,
                 index_store=index_store,
+                vector_stores=[{global_settings__redis_namespace.value, vector_store}],
             )
         else:
             global_llamaindex_storage_context.value.docstore = document_store
             global_llamaindex_storage_context.value.index_store = index_store
+            global_llamaindex_storage_context.value.add_vector_store(
+                vector_store=vector_store,
+                namespace=global_settings__redis_namespace.value,
+            )
     else:
         global_cache__ingestion.value = None
         if global_llamaindex_storage_context.value is None:
             global_llamaindex_storage_context.value = StorageContext.from_defaults(
                 docstore=SimpleDocumentStore(),
                 index_store=SimpleIndexStore(),
+                vector_stores=[
+                    {global_settings__redis_namespace.value, SimpleVectorStore()}
+                ],
             )
         else:
             global_llamaindex_storage_context.value.docstore = SimpleDocumentStore()
             global_llamaindex_storage_context.value.index_store = SimpleIndexStore()
+            global_llamaindex_storage_context.value.add_vector_store(
+                vector_store=SimpleVectorStore(),
+                namespace=global_settings__redis_namespace.value,
+            )
 
 
 def initialise_default_settings():
@@ -556,7 +576,7 @@ def initialise_default_settings():
         update_data_ingestion_settings()
         update_chatbot_settings()
         update_graph_storage_context()
-        update_index_documents_storage_context()
+        update_index_documents_vector_storage_context()
 
         global_settings_initialised.value = True
 
@@ -570,16 +590,16 @@ def set_theme_colours():
     """Set the theme colours for the Solara app."""
 
     solara.lab.theme.themes.light.primary = "#2196f3"
-    solara.lab.theme.themes.light.secondary = "#ff5722"
-    solara.lab.theme.themes.light.accent = "#607d8b"
+    solara.lab.theme.themes.light.secondary = "#ff8159"  # "#ff5722"
+    solara.lab.theme.themes.light.accent = "#a7c8d9"  # "#607d8b"
     solara.lab.theme.themes.light.error = "#f44336"
     solara.lab.theme.themes.light.warning = "#ffc107"
     solara.lab.theme.themes.light.info = "#00bcd4"
     solara.lab.theme.themes.light.success = "#8bc34a"
 
-    solara.lab.theme.themes.dark.primary = "#ff5722"
+    solara.lab.theme.themes.dark.primary = "#ff8159"  # ff5722"
     solara.lab.theme.themes.dark.secondary = "#673ab7"
-    solara.lab.theme.themes.dark.accent = "#cddc39"
+    solara.lab.theme.themes.dark.accent = "#808a24"  # "#cddc39"
     solara.lab.theme.themes.dark.error = "#f44336"
     solara.lab.theme.themes.dark.warning = "#ffc107"
     solara.lab.theme.themes.dark.info = "#00bcd4"

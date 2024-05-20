@@ -28,8 +28,8 @@ from llama_index.readers.papers import ArxivReader, PubmedReader
 from llama_index.readers.file import PyMuPDFReader
 
 from llama_index_client import Document
-from llama_index.core import KnowledgeGraphIndex
-from llama_index.core import load_index_from_storage, load_indices_from_storage
+from llama_index.core import KnowledgeGraphIndex, VectorStoreIndex
+from llama_index.core import load_index_from_storage
 from llama_index.core import Settings
 from llama_index.core.node_parser import SentenceSplitter
 from llama_index.core.extractors import (
@@ -38,14 +38,24 @@ from llama_index.core.extractors import (
     KeywordExtractor,
     QuestionsAnsweredExtractor,
 )
+from llama_index.core.retrievers import KGTableRetriever, VectorIndexRetriever
+from llama_index.core import get_response_synthesizer
+from llama_index.core.query_engine import RetrieverQueryEngine
+from llama_index.core.chat_engine import ContextChatEngine
 from llama_index.core.schema import TransformComponent
 from llama_index.core.ingestion import IngestionPipeline, IngestionCache
 from llama_index.postprocessor.cohere_rerank import CohereRerank
-from llama_index.core.postprocessor import SentenceTransformerRerank
+from llama_index.core.postprocessor import (
+    LLMRerank,
+    # SentenceTransformerRerank,
+    # SimilarityPostprocessor,
+    # LongContextReorder
+)
+
 
 import solara
 from solara.alias import rv
-from solara.lab import task
+from solara.lab import task, Task, use_task
 
 import wikipedia
 from linkpreview import Link, LinkPreview, LinkGrabber
@@ -53,6 +63,7 @@ from linkpreview import Link, LinkPreview, LinkGrabber
 import utils.global_state as global_state
 from utils.global_state import show_status_message
 import utils.constants as constants
+from utils.retrievers import VectorKnowledgeGraphRetriever
 
 logger = logging.getLogger(__name__)
 # Use custom formatter for coloured logs, see: https://stackoverflow.com/questions/384076/how-can-i-color-python-logging-output
@@ -66,7 +77,10 @@ logging.basicConfig(
 )
 
 # Data sources settings
-existing_indices: solara.Reactive[str] = solara.reactive(constants.EMPTY_STRING)
+existing_knowledge_graph_index: solara.Reactive[str] = solara.reactive(
+    constants.EMPTY_STRING
+)
+existing_vector_index: solara.Reactive[str] = solara.reactive(constants.EMPTY_STRING)
 wikipedia_languages: solara.Reactive[list] = solara.reactive([])
 wikipedia_language_prefix: solara.Reactive[str] = solara.reactive(
     constants.ISO639SET1_LANGUAGE_ENGLISH
@@ -103,37 +117,77 @@ def load_remote_pdf_data(pdf_url: str) -> List[Document]:
 
 def initialise_chat_engine() -> bool:
     """Initialise the chat engine with the knowledge graph index if it has been initialised."""
-    post_processors = None
+    post_processors = []
     if (
         global_state.global_settings__language_model_provider.value
         == constants.LLM_PROVIDER_COHERE
     ):
-        post_processors = [
+        post_processors.append(
             CohereRerank(api_key=global_state.global_settings__cohere_api_key.value)
-        ]
+        )
     else:
-        post_processors = [SentenceTransformerRerank()]
-    if global_state.global_knowledge_graph_index.value is not None:
+        # post_processors.append(SentenceTransformerRerank(keep_retrieval_score=True))
+        post_processors.append(LLMRerank(llm=Settings.llm))
+
+    # post_processors.append(SimilarityPostprocessor(similarity_cutoff=0.7))
+    # post_processors.append(LongContextReorder())
+
+    if (
+        global_state.global_knowledge_graph_index.value is not None
+        and global_state.global_knowledge_vector_index.value is not None
+    ):
         global_state.global_chat_engine.value = None
         if global_state.global_llamaindex_chat_memory.value is not None:
             global_state.global_llamaindex_chat_memory.value.reset()
         show_status_message(
             message=f"**Initialising chat engine** from index using the _{global_state.global_settings__index_chat_mode.value}_ chat mode."
         )
-        global_state.global_chat_engine.value = (
-            global_state.global_knowledge_graph_index.value.as_chat_engine(
-                chat_mode=global_state.global_settings__index_chat_mode.value,
-                llm=Settings.llm,
-                verbose=True,
-                memory=global_state.global_llamaindex_chat_memory.value,
-                system_prompt=global_state.global_settings__llm_system_message.value,
-                node_postprocessors=post_processors,
-                streaming=True,
-            )
+        # global_state.global_chat_engine.value = (
+        #     global_state.global_knowledge_graph_index.value.as_chat_engine(
+        #         chat_mode=global_state.global_settings__index_chat_mode.value,
+        #         llm=Settings.llm,
+        #         verbose=True,
+        #         memory=global_state.global_llamaindex_chat_memory.value,
+        #         system_prompt=global_state.global_settings__llm_system_message.value,
+        #         node_postprocessors=post_processors,
+        #         streaming=True,
+        #     )
+        # )
+        kg_retriever = KGTableRetriever(
+            index=global_state.global_knowledge_graph_index.value,
+            retriever_mode="hybrid",
+            graph_store_query_depth=2,
+            similarity_top_k=2,
+            verbose=True,
+        )
+        vector_retriever = VectorIndexRetriever(
+            index=global_state.global_knowledge_vector_index.value,
+            verbose=True,
+        )
+        retriever = VectorKnowledgeGraphRetriever(
+            vector_retriever=vector_retriever,
+            knowledge_graph_retriever=kg_retriever,
+        )
+        response_synthesizer = get_response_synthesizer(response_mode="tree_summarize")
+        query_engine = RetrieverQueryEngine(
+            retriever=retriever,
+            response_synthesizer=response_synthesizer,
+            node_postprocessors=post_processors,
+        )
+        global_state.global_chat_engine.value = ContextChatEngine.from_defaults(
+            retriever=retriever,
+            query_engine=query_engine,
+            llm=Settings.llm,
+            verbose=True,
+            memory=global_state.global_llamaindex_chat_memory.value,
+            system_prompt=global_state.global_settings__llm_system_message.value,
+            streaming=True,
         )
         return True
     else:
-        raise ValueError("Index from ingested documents is not available.")
+        raise ValueError(
+            "Knowledge graph and semantic search indices from ingested documents are not available."
+        )
 
 
 def build_index_pipeline() -> bool:
@@ -189,7 +243,7 @@ def build_index_pipeline() -> bool:
     nest_asyncio.apply()
     chunk_nodes = pipeline.run(documents=ingested_documents.value, show_progress=True)
     show_status_message(
-        message=f"**Building index** from {len(chunk_nodes)} chunks extracted from {len(ingested_documents.value)} document(s).",
+        message=f"**Building knowledge graph index** from {len(chunk_nodes)} chunks extracted from {len(ingested_documents.value)} document(s).",
         timeout=0,
     )
     global_state.global_knowledge_graph_index.value = KnowledgeGraphIndex(
@@ -203,6 +257,16 @@ def build_index_pipeline() -> bool:
     )
     global_state.global_knowledge_graph_index.value.storage_context.docstore.add_documents(
         chunk_nodes
+    )
+    show_status_message(
+        message=f"**Building semantic search index** from {len(chunk_nodes)} chunks extracted from {len(ingested_documents.value)} document(s).",
+        timeout=0,
+    )
+    global_state.global_knowledge_vector_index.value = VectorStoreIndex(
+        nodes=chunk_nodes,
+        embed_model=Settings.embed_model,
+        show_progress=True,
+        storage_context=global_state.global_llamaindex_storage_context.value,
     )
     return True
 
@@ -239,12 +303,13 @@ def build_index() -> bool:
     return True
 
 
-@task
+@task(prefer_threaded=True)
 async def ingest_wikipedia_data():
     """Ingest the selected Wikipedia article."""
     global ingested_documents
     try:
         ingested_documents.value = []
+        last_ingested_data_source.value = constants.EMPTY_STRING
         reader = WikipediaReader()
         initialisation_status: bool = False
         articles_list = wikipedia_article.value.split("[ __ ]")
@@ -294,12 +359,13 @@ async def ingest_wikipedia_data():
         logger.error(f"Error ingesting Wikipedia article(s). {str(e)}")
 
 
-@task
+@task(prefer_threaded=True)
 async def ingest_arxiv_data():
     """Ingest the arXiv results."""
     global ingested_documents
     try:
         ingested_documents.value = []
+        last_ingested_data_source.value = constants.EMPTY_STRING
         reader = ArxivReader()
         show_status_message(
             message=f"**Fetching** results of arXiv query `{arxiv_query.value}`.",
@@ -329,12 +395,13 @@ async def ingest_arxiv_data():
         logger.error(f"Error ingesting arXiv results. {str(e)}")
 
 
-@task
+@task(prefer_threaded=True)
 async def ingest_pubmed_data():
     """Ingest the Pubmed results."""
     global ingested_documents
     try:
         ingested_documents.value = []
+        last_ingested_data_source.value = constants.EMPTY_STRING
         reader = PubmedReader()
         show_status_message(
             message=f"**Fetching** results of Pubmed query `{pubmed_query.value}`.",
@@ -361,12 +428,13 @@ async def ingest_pubmed_data():
         logger.error(f"Error ingesting Pubmed results. {str(e)}")
 
 
-@task
+@task(prefer_threaded=True)
 async def ingest_webpage_data():
     """Ingest the selected webpage."""
     global ingested_documents
     try:
         ingested_documents.value = []
+        last_ingested_data_source.value = constants.EMPTY_STRING
         initialisation_status: bool = False
         reader: BasePydanticReader = None
         match webpage_reader.value:
@@ -409,12 +477,13 @@ async def ingest_webpage_data():
         logger.error(f"Error ingesting web page(s). {str(e)}")
 
 
-@task
+@task(prefer_threaded=True)
 async def ingest_pdfurl_data():
     """Ingest the PDF (URL) results."""
     global ingested_documents
     try:
         ingested_documents.value = []
+        last_ingested_data_source.value = constants.EMPTY_STRING
         show_status_message(
             message=f"**Fetching** PDF [{pdf_url.value}]({pdf_url.value})."
         )
@@ -440,46 +509,32 @@ async def ingest_pdfurl_data():
         logger.error(f"Error ingesting PDF (URL). {str(e)}")
 
 
-@task
+@task(prefer_threaded=True)
 async def load_existing_indices():
     """Load the existing indices from the storage context."""
     try:
         initialisation_status: bool = False
         if global_state.global_llamaindex_storage_context.value is not None:
-            index_ids = existing_indices.value.split(" ")
-            if len(index_ids) == 0:
-                raise ValueError("No index IDs found in the input.")
-            elif len(index_ids) == 1:
-                show_status_message(
-                    message=f"**Loading** index with ID _{index_ids[0]}_.",
-                    # timeout=0,
-                )
-                global_state.global_knowledge_graph_index.value = load_index_from_storage(
-                    storage_context=global_state.global_llamaindex_storage_context.value,
-                    index_id=index_ids[0],
-                )
-            else:
-                raise NotImplementedError(
-                    "Loading multiple indices is not yet supported."
-                )
-                # Check: https://github.com/run-llama/llama_index/discussions/13233
-                show_status_message(
-                    message=f"""
-                    **Loading** {len(index_ids)} indices.
-
-                    {', '.join([f'_{index_id}_' for index_id in index_ids])}
-                    """,
-                    timeout=0,
-                )
-                load_indices_from_storage(
-                    storage_context=global_state.global_llamaindex_storage_context.value,
-                    index_ids=index_ids,
-                )
+            last_ingested_data_source.value = constants.EMPTY_STRING
+            show_status_message(
+                message=f"**Loading knowledge graph index** with ID _{existing_knowledge_graph_index.value}_.",
+            )
+            global_state.global_knowledge_graph_index.value = load_index_from_storage(
+                storage_context=global_state.global_llamaindex_storage_context.value,
+                index_id=existing_knowledge_graph_index.value,
+            )
+            show_status_message(
+                message=f"**Loading semantic search index** with ID _{existing_vector_index.value}_.",
+            )
+            global_state.global_knowledge_vector_index.value = load_index_from_storage(
+                storage_context=global_state.global_llamaindex_storage_context.value,
+                index_id=existing_vector_index.value,
+            )
             last_ingested_data_source.value = constants.SOURCE_TYPE_INDICES
             initialisation_status = initialise_chat_engine()
             if initialisation_status:
                 show_status_message(
-                    message=f"**Done** loading indices(s) {', '.join([f'_{index_id}_' for index_id in index_ids])} from storage. You can now chat with the AI.",
+                    message=f"**Done** loading knowledge graph index _{existing_knowledge_graph_index.value}_ and semantic search index _{existing_vector_index.value}_ from storage. You can now chat with the AI.",
                     colour="success",
                 )
         else:
@@ -510,20 +565,29 @@ def ExistingIndicesSourceComponent():
     with solara.Card(
         "Source indices",
         subtitle="""
-                Enter the index ID for the index that you wish to load. In order to load multiple indices, provide multiple index IDs separated by space.
+                Enter the index IDs for the knowledge graph index and the associated semantic search index that you wish to load.
                 """,
         elevation=0,
     ):
         with solara.Column(align="stretch"):
             solara.InputText(
-                "Index ID",
-                value=existing_indices,
+                "Knowledge graph index ID",
+                value=existing_knowledge_graph_index,
+                disabled=load_existing_indices.pending,
+            )
+            solara.InputText(
+                "Semantic search index ID",
+                value=existing_vector_index,
                 disabled=load_existing_indices.pending,
             )
             solara.Button(
                 "Load",
                 on_click=load_existing_indices,
-                disabled=load_existing_indices.pending or not existing_indices.value,
+                disabled=load_existing_indices.pending
+                or (
+                    not existing_knowledge_graph_index.value
+                    and not existing_vector_index.value
+                ),
             )
             solara.ProgressLinear(load_existing_indices.pending)
 
@@ -531,8 +595,6 @@ def ExistingIndicesSourceComponent():
 @solara.component
 def WikipediaSourceComponent():
     """Component for selecting a Wikipedia article as a data source."""
-
-    task_load_wikipedia_languages = solara.lab.use_task(load_wikipedia_languages)
 
     with solara.Card(
         "Wikipedia article(s) as data source",
@@ -544,6 +606,9 @@ def WikipediaSourceComponent():
         with solara.ColumnsResponsive(
             default=[12], small=[12], medium=[3, 9], large=[2, 10], xlarge=[2, 10]
         ):
+            task_load_wikipedia_languages: Task[None] = use_task(
+                load_wikipedia_languages, prefer_threaded=True
+            )
             with solara.Column(align="stretch"):
                 rv.Select(
                     label="Language prefix",
@@ -575,31 +640,33 @@ def WikipediaSourceComponent():
                     or not wikipedia_article.value,
                 )
                 solara.ProgressLinear(ingest_wikipedia_data.pending)
-                if (
-                    last_ingested_data_source.value == constants.SOURCE_TYPE_WIKIPEDIA
-                    and len(ingested_documents.value) > 0
-                ):
-                    with rv.ExpansionPanels(
-                        inset=True,
-                        hover=True,
-                        value=0 if len(ingested_documents.value) == 1 else None,
+                if ingest_wikipedia_data.finished:
+                    if (
+                        last_ingested_data_source.value
+                        == constants.SOURCE_TYPE_WIKIPEDIA
+                        and len(ingested_documents.value) > 0
                     ):
-                        solara.Text(
-                            f"Fetched {len(ingested_documents.value)} Wikipedia {'articles' if len(ingested_documents.value) > 1 else 'article'}"
-                        )
-                        for doc in ingested_documents.value:
-                            wp = wikipedia.page(pageid=doc.doc_id)
-                            with rv.ExpansionPanel():
-                                with rv.ExpansionPanelHeader():
-                                    solara.Markdown(
-                                        f"**Article ID**: {doc.doc_id} **Title**: {wp.title}"
-                                    )
-                                with rv.ExpansionPanelContent():
-                                    solara.Markdown("### Article summary")
-                                    solara.Text(wp.summary)
-                                    solara.Markdown(
-                                        f"<a href='{wp.url}' target='_blank'>Read the original article (opens in a new browser tab or window).</a>"
-                                    )
+                        with rv.ExpansionPanels(
+                            inset=True,
+                            hover=True,
+                            value=0 if len(ingested_documents.value) == 1 else None,
+                        ):
+                            solara.Text(
+                                f"Fetched {len(ingested_documents.value)} Wikipedia {'articles' if len(ingested_documents.value) > 1 else 'article'}"
+                            )
+                            for doc in ingested_documents.value:
+                                wp = wikipedia.page(pageid=doc.doc_id)
+                                with rv.ExpansionPanel():
+                                    with rv.ExpansionPanelHeader():
+                                        solara.Markdown(
+                                            f"**Article ID**: {doc.doc_id} **Title**: {wp.title}"
+                                        )
+                                    with rv.ExpansionPanelContent():
+                                        solara.Markdown("### Article summary")
+                                        solara.Text(wp.summary)
+                                        solara.Markdown(
+                                            f"<a href='{wp.url}' target='_blank'>Read the original article (opens in a new browser tab or window).</a>"
+                                        )
 
 
 @solara.component
@@ -723,56 +790,63 @@ def WebpageSourceComponent():
                     disabled=ingest_webpage_data.pending or not webpage_url.value,
                 )
                 solara.ProgressLinear(ingest_webpage_data.pending)
-                if (
-                    last_ingested_data_source.value == constants.SOURCE_TYPE_WEBPAGE
-                    and len(ingested_documents.value) > 0
-                ):
-                    with rv.ExpansionPanels(
-                        inset=True,
-                        hover=True,
-                        value=0 if len(ingested_documents.value) == 1 else None,
+                if ingest_webpage_data.finished:
+                    if (
+                        last_ingested_data_source.value == constants.SOURCE_TYPE_WEBPAGE
+                        and len(ingested_documents.value) > 0
                     ):
-                        solara.Text(
-                            f"Fetched {len(ingested_documents.value)} web {'pages' if len(ingested_documents.value) > 1 else 'page'}"
-                        )
-                        for doc in ingested_documents.value:
-                            # Fetch the URL
-                            grabber = LinkGrabber(
-                                initial_timeout=20,
-                                maxsize=10485760,
-                                receive_timeout=30,
-                                chunk_size=4096,
+                        with rv.ExpansionPanels(
+                            inset=True,
+                            hover=True,
+                            value=0 if len(ingested_documents.value) == 1 else None,
+                        ):
+                            solara.Text(
+                                f"Fetched {len(ingested_documents.value)} web {'pages' if len(ingested_documents.value) > 1 else 'page'}"
                             )
-                            content, url = grabber.get_content(url=doc.doc_id)
-                            link = Link(url=url, content=content)
-                            url_preview = LinkPreview(link=link, parser="lxml")
-                            with rv.ExpansionPanel():
-                                with rv.ExpansionPanelHeader():
-                                    solara.Markdown(f"**URL**: {doc.doc_id}")
-                                with rv.ExpansionPanelContent():
-                                    with solara.Columns([3, 9]):
-                                        with solara.Column():
-                                            if str(url_preview.image).startswith(
-                                                "http"
-                                            ):
-                                                solara.Image(image=url_preview.image)
-                                            elif str(url_preview.image).startswith(
-                                                "data"
-                                            ):
-                                                base64data = url_preview.image.split(
-                                                    ","
-                                                )[1]
-                                                solara.Image(
-                                                    image=base64.b64decode(base64data)
+                            for doc in ingested_documents.value:
+                                # Fetch the URL
+                                grabber = LinkGrabber(
+                                    initial_timeout=20,
+                                    maxsize=10485760,
+                                    receive_timeout=30,
+                                    chunk_size=4096,
+                                )
+                                content, url = grabber.get_content(url=doc.doc_id)
+                                link = Link(url=url, content=content)
+                                url_preview = LinkPreview(link=link, parser="lxml")
+                                with rv.ExpansionPanel():
+                                    with rv.ExpansionPanelHeader():
+                                        solara.Markdown(f"**URL**: {doc.doc_id}")
+                                    with rv.ExpansionPanelContent():
+                                        with solara.Columns([3, 9]):
+                                            with solara.Column():
+                                                if str(url_preview.image).startswith(
+                                                    "http"
+                                                ):
+                                                    solara.Image(
+                                                        image=url_preview.image
+                                                    )
+                                                elif str(url_preview.image).startswith(
+                                                    "data"
+                                                ):
+                                                    base64data = (
+                                                        url_preview.image.split(",")[1]
+                                                    )
+                                                    solara.Image(
+                                                        image=base64.b64decode(
+                                                            base64data
+                                                        )
+                                                    )
+                                            with solara.Column():
+                                                solara.Markdown(
+                                                    f"### {url_preview.title}"
                                                 )
-                                        with solara.Column():
-                                            solara.Markdown(f"### {url_preview.title}")
-                                            solara.Markdown(
-                                                f"_{url_preview.description}_"
-                                            )
-                                            solara.Markdown(
-                                                f"[{doc.doc_id}]({doc.doc_id})"
-                                            )
+                                                solara.Markdown(
+                                                    f"_{url_preview.description}_"
+                                                )
+                                                solara.Markdown(
+                                                    f"[{doc.doc_id}]({doc.doc_id})"
+                                                )
 
 
 @solara.component
@@ -829,10 +903,7 @@ def Page():
         solara.Title("Data ingestion")
 
     with solara.AppBarTitle():
-        solara.Text("Ingest data", style={"color": "#FFFFFF"})
-
-    with solara.AppBar():
-        solara.lab.ThemeToggle()
+        solara.Text("Ingest data")
 
     with rv.Snackbar(
         top=True,
@@ -853,11 +924,19 @@ def Page():
         )
 
     with rv.ExpansionPanels(popout=True, hover=True, accordion=True):
-        with rv.ExpansionPanel():
+        disable_index_loading = (
+            global_state.global_settings__neo4j_disable.value
+            or global_state.global_settings__redis_disable.value
+        )
+        with rv.ExpansionPanel(disabled=disable_index_loading):
             with rv.ExpansionPanelHeader():
                 solara.Markdown(
-                    "**Existing indices**: _Load one or more indices saved on an external document and indices storage._"
+                    "**Existing indices**: _Load saved on an external document and indices storage._"
                 )
+                if disable_index_loading:
+                    solara.Warning(
+                        "Index loading is disabled since graph, documents and indices storage settings are currently set to live in memory only."
+                    )
             with rv.ExpansionPanelContent():
                 ExistingIndicesSourceComponent()
         with rv.ExpansionPanel():

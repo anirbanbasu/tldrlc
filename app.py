@@ -26,12 +26,25 @@ def CustomLayout(children: Any = []):
     global_state.set_theme_colours()
     global_state.initialise_default_settings()
 
-    return solara.AppLayout(
+    with solara.AppLayout(
         children=children,
         color=global_state.corrective_background_colour.value,
         navigation=True,
         sidebar_open=False,
-    )
+    ) as app_layout:
+        with solara.AppBar():
+            with solara.v.Btn(
+                icon=True,
+                tag="a",
+                attributes={
+                    "href": "https://github.com/anirbanbasu/tldrlc",
+                    "title": "TLDRLC GitHub repository",
+                    "target": "_blank",
+                },
+            ):
+                solara.v.Icon(children=["mdi-github-circle"])
+            solara.lab.ThemeToggle()
+    return app_layout
 
 
 routes = [

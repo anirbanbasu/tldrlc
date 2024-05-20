@@ -26,6 +26,7 @@ import utils.constants as constants
 import utils.global_state as global_state
 from utils.global_state import show_status_message
 from llama_index.core import Settings
+from llama_index.core.chat_engine.types import StreamingAgentChatResponse
 
 logger = logging.getLogger(__name__)
 # Use custom formatter for coloured logs, see: https://stackoverflow.com/questions/384076/how-can-i-color-python-logging-output
@@ -38,7 +39,9 @@ logging.basicConfig(
     encoding=constants.CHAR_ENCODING_UTF8,
 )
 
+user_chat_input: solara.Reactive[str] = solara.Reactive(constants.EMPTY_STRING)
 exported_chat_json: solara.Reactive[str] = solara.Reactive(constants.EMPTY_STRING)
+last_response_ai: solara.Reactive[StreamingAgentChatResponse] = solara.Reactive(None)
 
 
 def stream_wrapper(streaming_response):
@@ -71,12 +74,10 @@ def Page():
         global_state.global_chat_messages.value = [
             {
                 constants.CHAT_KEY_ROLE: constants.CHAT_KEY_VALUE_ASSISTANT,
-                constants.CHAT_KEY_CONTENT: "_**The chat engine is not available. Please check the settings and then ingest some data to initialise the chat engine.**_",
+                constants.CHAT_KEY_CONTENT: "_The chat engine is **not available**. Please check the settings and then ingest some data from the Ingest page to initialise the chat engine._",
                 constants.CHAT_KEY_TIMESTAMP: f"{datetime.datetime.now()}",
-                constants.CHAT_KEY_LLM_PROVIDER: global_state.global_settings__language_model_provider.value[
-                    :
-                ],
-                constants.CHAT_KEY_LLM_MODEL_NAME: Settings.llm.metadata.model_name[:],
+                constants.CHAT_KEY_LLM_PROVIDER: "TLDRLC",
+                constants.CHAT_KEY_LLM_MODEL_NAME: "System",
             },
         ]
 
@@ -116,6 +117,8 @@ def Page():
                     constants.CHAT_KEY_TIMESTAMP: f"{datetime.datetime.now()}",
                 },
             ]
+        last_response_ai.value = None
+        user_chat_input.value = constants.EMPTY_STRING
 
     def call_chat_engine():
         try:
@@ -124,7 +127,7 @@ def Page():
             if global_state.global_chat_engine.value is None:
                 no_chat_engine_message()
                 return
-            response = global_state.global_chat_engine.value.stream_chat(
+            last_response_ai.value = global_state.global_chat_engine.value.stream_chat(
                 message=global_state.global_chat_messages.value[-1][
                     constants.CHAT_KEY_CONTENT
                 ],
@@ -143,11 +146,13 @@ def Page():
                     ],
                 },
             ]
-            for chunk in response.response_gen:
+            # for node in last_response_ai.value.source_nodes:
+            #     logger.warning(f"Source node: {node.metadata}")
+            for chunk in last_response_ai.value.response_gen:
                 add_chunk_to_ai_message(chunk)
         except Exception as e:
             logger.error(f"Error with chat engine. {e}")
-            show_status_message(f"Error in chat engine. {e}", colour="error")
+            show_status_message(f"Error with chat engine. {e}", colour="error")
 
     task_get_chat_response = solara.lab.use_task(
         call_chat_engine, dependencies=[has_unanswered_messages]
@@ -155,12 +160,8 @@ def Page():
 
     with solara.AppBarTitle():
         solara.Text(
-            "Too Long, Didn't Read, Let's Chat",
-            style={"color": "#FFFFFF"},
+            "TL;DR Let's Chat",
         )
-
-    with solara.AppBar():
-        solara.lab.ThemeToggle()
 
     with rv.Snackbar(
         top=True,
@@ -221,18 +222,34 @@ def Page():
                             else "Human"
                         ),
                         color=(
-                            "#85C1E9"
+                            (
+                                solara.lab.theme.themes.dark.accent
+                                if solara.lab.use_dark_effective()
+                                else (solara.lab.theme.themes.light.accent)
+                            )
                             if item[constants.CHAT_KEY_ROLE]
                             == constants.CHAT_KEY_VALUE_ASSISTANT
-                            else "#F7DC6F"
+                            else (
+                                solara.lab.theme.themes.dark.secondary
+                                if solara.lab.use_dark_effective()
+                                else (solara.lab.theme.themes.light.secondary)
+                            )
                         ),
                         avatar_background_color=(
-                            "#D6EAF8"
+                            (
+                                solara.lab.theme.themes.dark.accent
+                                if solara.lab.use_dark_effective()
+                                else (solara.lab.theme.themes.light.accent)
+                            )
                             if item[constants.CHAT_KEY_ROLE]
                             == constants.CHAT_KEY_VALUE_ASSISTANT
-                            else "#FCF3CF"
+                            else (
+                                solara.lab.theme.themes.dark.secondary
+                                if solara.lab.use_dark_effective()
+                                else (solara.lab.theme.themes.light.secondary)
+                            )
                         ),
-                        border_radius="16px",
+                        border_radius="8px",
                         notch=True,
                     ):
                         solara.Markdown(md_text=f"{item[constants.CHAT_KEY_CONTENT]}")
@@ -254,24 +271,44 @@ def Page():
             if exported_chat_json.value:
                 solara.Markdown(
                     f"""
-                                ```json
-                                {exported_chat_json.value}
-                                ```        
-                                """
+                    ```json
+                    {exported_chat_json.value}
+                    ```        
+                    """
                 )
-        with solara.Column():
+        with solara.Row():
+            # solara.lab.ChatInput(
+            #     send_callback=ask_tldrlc,
+            #     disabled=task_get_chat_response.pending,
+            #     style={"width": "100%"},
+            # )
+            solara.InputText(
+                label="Type your message here...",
+                style={"width": "100%"},
+                value=user_chat_input,
+                update_events=["keyup.enter"],
+                on_value=ask_tldrlc,
+                disabled=task_get_chat_response.pending,
+            )
+            solara.Button(
+                label="Ask",
+                icon_name="mdi-send",
+                on_click=lambda: (
+                    ask_tldrlc(message=user_chat_input.value)
+                    if user_chat_input.value
+                    else None
+                ),
+                color="success",
+                disabled=task_get_chat_response.pending,
+                # outlined=True,
+            )
             solara.Button(
                 label="Clear chat",
                 on_click=clear_chat_history,
                 color="error",
-                style={
-                    "margin-top": "auto",
-                    "margin-bottom": "auto",
-                    "display": "none",  # Hide the button
-                },
-            )
-            solara.lab.ChatInput(
-                send_callback=ask_tldrlc,
-                disabled=task_get_chat_response.pending,
-                style={"width": "100%"},
+                disabled=(
+                    task_get_chat_response.pending
+                    or len(global_state.global_chat_messages.value) == 0
+                ),
+                style={"display": "none"},
             )

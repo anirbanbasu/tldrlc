@@ -104,6 +104,12 @@ def LLMSettingsComponent():
                     message="The model must be available on the selected Ollama server.",
                     on_value=global_state.update_llm_settings,
                 )
+        solara.InputText(
+            label="Embedding model",
+            value=f"{global_state.global_settings__embedding_model.value} ({global_state.global_settings__language_model_provider.value})",
+            message="This embedding model is automatically selected based on your choice of the language model provider.",
+            disabled=True,
+        )
         solara.SliderFloat(
             label="Temperature",
             min=0.0,
@@ -345,8 +351,8 @@ def GraphDBSettingsComponent():
 
 
 @solara.component
-def DocumentsIndexStorageSettingsComponent():
-    """Component for the documents and index storage settings."""
+def DocumentsIndexVectorStorageSettingsComponent():
+    """Component for the documents, index and vector storage settings."""
     status: solara.Reactive[Any] = solara.use_reactive(None)
 
     def test_redis_connection(callback_data: Any = None):
@@ -375,14 +381,14 @@ def DocumentsIndexStorageSettingsComponent():
             status.value = solara.Warning(
                 "Redis connection has been disabled. Using in-memory storage."
             )
-        global_state.update_index_documents_storage_context()
+        global_state.update_index_documents_vector_storage_context()
 
     with solara.Card(
         title="Documents and index storage",
         subtitle="""
             The documents and index storage settings control how the chatbot stores the 
-            documents and indexes. Redis is used to store the documents and indexes. 
-            If Redis is not available, the chatbot will store the documents and indexes 
+            documents, vectors and indices. Redis is used to store the documents, vectors and indices. 
+            If Redis is not available, the chatbot will store the documents, vectors and indices
             in memory, which will be lost when the browser session expires.
             """,
         elevation=0,
@@ -473,10 +479,7 @@ def Page():
         solara.Title("Settings")
 
     with solara.AppBarTitle():
-        solara.Text("Settings", style={"color": "#FFFFFF"})
-
-    with solara.AppBar():
-        solara.lab.ThemeToggle()
+        solara.Text("Settings")
 
     with rv.ExpansionPanels(popout=True, hover=True, accordion=True):
         with rv.ExpansionPanel():
@@ -513,4 +516,4 @@ def Page():
                     "**Documents and indices storage**: _This is where you specify if an external storage for documents and indices should be used and how to connect to it._"
                 )
             with rv.ExpansionPanelContent():
-                DocumentsIndexStorageSettingsComponent()
+                DocumentsIndexVectorStorageSettingsComponent()

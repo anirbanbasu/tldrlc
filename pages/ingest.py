@@ -134,7 +134,7 @@ def initialise_chat_engine() -> bool:
 
     if (
         global_state.global_knowledge_graph_index.value is not None
-        and global_state.global_knowledge_vector_index.value is not None
+        and global_state.global_semantic_search_index.value is not None
     ):
         global_state.global_chat_engine.value = None
         if global_state.global_llamaindex_chat_memory.value is not None:
@@ -142,26 +142,17 @@ def initialise_chat_engine() -> bool:
         show_status_message(
             message=f"**Initialising chat engine** from index using the _{global_state.global_settings__index_chat_mode.value}_ chat mode."
         )
-        # global_state.global_chat_engine.value = (
-        #     global_state.global_knowledge_graph_index.value.as_chat_engine(
-        #         chat_mode=global_state.global_settings__index_chat_mode.value,
-        #         llm=Settings.llm,
-        #         verbose=True,
-        #         memory=global_state.global_llamaindex_chat_memory.value,
-        #         system_prompt=global_state.global_settings__llm_system_message.value,
-        #         node_postprocessors=post_processors,
-        #         streaming=True,
-        #     )
-        # )
         kg_retriever = KGTableRetriever(
             index=global_state.global_knowledge_graph_index.value,
+            embed_model=Settings.embed_model,
             retriever_mode="hybrid",
             graph_store_query_depth=2,
             similarity_top_k=2,
             verbose=True,
         )
         vector_retriever = VectorIndexRetriever(
-            index=global_state.global_knowledge_vector_index.value,
+            index=global_state.global_semantic_search_index.value,
+            embed_model=Settings.embed_model,
             verbose=True,
         )
         retriever = VectorKnowledgeGraphRetriever(
@@ -262,7 +253,7 @@ def build_index_pipeline() -> bool:
         message=f"**Building semantic search index** from {len(chunk_nodes)} chunks extracted from {len(ingested_documents.value)} document(s).",
         timeout=0,
     )
-    global_state.global_knowledge_vector_index.value = VectorStoreIndex(
+    global_state.global_semantic_search_index.value = VectorStoreIndex(
         nodes=chunk_nodes,
         embed_model=Settings.embed_model,
         show_progress=True,
@@ -526,7 +517,7 @@ async def load_existing_indices():
             show_status_message(
                 message=f"**Loading semantic search index** with ID _{existing_vector_index.value}_.",
             )
-            global_state.global_knowledge_vector_index.value = load_index_from_storage(
+            global_state.global_semantic_search_index.value = load_index_from_storage(
                 storage_context=global_state.global_llamaindex_storage_context.value,
                 index_id=existing_vector_index.value,
             )
@@ -905,16 +896,6 @@ def Page():
     with solara.AppBarTitle():
         solara.Text("Ingest data")
 
-    with rv.Snackbar(
-        top=True,
-        right=True,
-        timeout=0,
-        multi_line=True,
-        color=global_state.status_message_colour.value,
-        v_model=global_state.status_message_show.value,
-    ):
-        solara.Markdown(f"{global_state.status_message.value}")
-
     if (
         global_state.global_settings__llm_provider_notice.value
         is not constants.EMPTY_STRING
@@ -923,7 +904,7 @@ def Page():
             icon=True, label=global_state.global_settings__llm_provider_notice.value
         )
 
-    with rv.ExpansionPanels(popout=True, hover=True, accordion=True):
+    with rv.ExpansionPanels(popout=True, hover=True, accordion=True, tabbable=False):
         disable_index_loading = (
             global_state.global_settings__neo4j_disable.value
             or global_state.global_settings__redis_disable.value

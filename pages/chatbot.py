@@ -42,6 +42,10 @@ logging.basicConfig(
 user_chat_input: solara.Reactive[str] = solara.Reactive(constants.EMPTY_STRING)
 exported_chat_json: solara.Reactive[str] = solara.Reactive(constants.EMPTY_STRING)
 last_response_ai: solara.Reactive[StreamingAgentChatResponse] = solara.Reactive(None)
+ai_response_feedback_score: solara.Reactive[float] = solara.Reactive(0.0)
+ai_response_feedback_comment: solara.Reactive[str] = solara.Reactive(
+    constants.EMPTY_STRING
+)
 
 
 def stream_wrapper(streaming_response):
@@ -81,6 +85,12 @@ def Page():
             },
         ]
 
+    def submit_feedback(callback_arg=None):
+        show_status_message(
+            "Feedback submission has not been enabled yet. Please check back later.",
+            colour="warning",
+        )
+
     def add_chunk_to_ai_message(chunk: str):
         global_state.global_chat_messages.value = [
             *global_state.global_chat_messages.value[:-1],
@@ -98,27 +108,29 @@ def Page():
             },
         ]
 
-    def ask_tldrlc(message):
-        if len(global_state.global_chat_messages.value) == 1:
-            # Remove the only not-initialised status message from the chatbot
-            global_state.global_chat_messages.value = [
-                {
-                    constants.CHAT_KEY_ROLE: constants.CHAT_KEY_VALUE_USER,
-                    constants.CHAT_KEY_CONTENT: message,
-                    constants.CHAT_KEY_TIMESTAMP: f"{datetime.datetime.now()}",
-                },
-            ]
-        else:
-            global_state.global_chat_messages.value = [
-                *global_state.global_chat_messages.value,
-                {
-                    constants.CHAT_KEY_ROLE: constants.CHAT_KEY_VALUE_USER,
-                    constants.CHAT_KEY_CONTENT: message,
-                    constants.CHAT_KEY_TIMESTAMP: f"{datetime.datetime.now()}",
-                },
-            ]
-        last_response_ai.value = None
-        user_chat_input.value = constants.EMPTY_STRING
+    def ask_tldrlc(callback_arg=None):
+        message = user_chat_input.value
+        if message is not None and len(message) > 0:
+            if len(global_state.global_chat_messages.value) == 1:
+                # Remove the only not-initialised status message from the chatbot
+                global_state.global_chat_messages.value = [
+                    {
+                        constants.CHAT_KEY_ROLE: constants.CHAT_KEY_VALUE_USER,
+                        constants.CHAT_KEY_CONTENT: message,
+                        constants.CHAT_KEY_TIMESTAMP: f"{datetime.datetime.now()}",
+                    },
+                ]
+            else:
+                global_state.global_chat_messages.value = [
+                    *global_state.global_chat_messages.value,
+                    {
+                        constants.CHAT_KEY_ROLE: constants.CHAT_KEY_VALUE_USER,
+                        constants.CHAT_KEY_CONTENT: message,
+                        constants.CHAT_KEY_TIMESTAMP: f"{datetime.datetime.now()}",
+                    },
+                ]
+            last_response_ai.value = None
+            user_chat_input.value = constants.EMPTY_STRING
 
     def call_chat_engine():
         try:
@@ -163,15 +175,15 @@ def Page():
             "TL;DR Let's Chat",
         )
 
-    with rv.Snackbar(
-        top=True,
-        right=True,
-        timeout=0,
-        multi_line=True,
-        color=global_state.status_message_colour.value,
-        v_model=global_state.status_message_show.value,
-    ):
-        solara.Markdown(f"{global_state.status_message.value}")
+    # with rv.Snackbar(
+    #     top=True,
+    #     right=True,
+    #     timeout=0,
+    #     multi_line=True,
+    #     color=global_state.status_message_colour.value,
+    #     v_model=global_state.status_message_show.value,
+    # ):
+    #     solara.Markdown(f"{global_state.status_message.value}")
 
     with solara.lab.ConfirmationDialog(
         open=global_state.show_eu_ai_act_notice,
@@ -266,6 +278,40 @@ def Page():
                                 "padding-top": "1em",
                             },
                         )
+                        if (
+                            item[constants.CHAT_KEY_ROLE]
+                            == constants.CHAT_KEY_VALUE_ASSISTANT
+                            and item == global_state.global_chat_messages.value[-1]
+                            and task_get_chat_response.finished
+                            and len(global_state.global_chat_messages.value) > 1
+                            and global_state.global_settings_langfuse_enabled.value
+                        ):
+                            with rv.ExpansionPanels():
+                                with rv.ExpansionPanel():
+                                    with rv.ExpansionPanelHeader():
+                                        solara.Markdown(
+                                            ":monocle_face: _How did I do?_"
+                                        )
+                                    with rv.ExpansionPanelContent():
+                                        solara.SliderFloat(
+                                            label="Score",
+                                            tick_labels=False,
+                                            step=0.1,
+                                            min=-1.0,
+                                            max=1.0,
+                                            value=ai_response_feedback_score,
+                                        )
+                                        solara.InputText(
+                                            label="Comments",
+                                            style={"width": "100%"},
+                                            value=ai_response_feedback_comment,
+                                        )
+                                        solara.Button(
+                                            label="Submit",
+                                            color="success",
+                                            outlined=True,
+                                            on_click=submit_feedback,
+                                        )
             if task_get_chat_response.pending:
                 solara.Markdown(":thinking: _Thinking of a response..._")
             if exported_chat_json.value:
@@ -277,27 +323,17 @@ def Page():
                     """
                 )
         with solara.Row():
-            # solara.lab.ChatInput(
-            #     send_callback=ask_tldrlc,
-            #     disabled=task_get_chat_response.pending,
-            #     style={"width": "100%"},
-            # )
             solara.InputText(
                 label="Type your message here...",
                 style={"width": "100%"},
                 value=user_chat_input,
-                update_events=["keyup.enter"],
                 on_value=ask_tldrlc,
                 disabled=task_get_chat_response.pending,
             )
             solara.Button(
                 label="Ask",
                 icon_name="mdi-send",
-                on_click=lambda: (
-                    ask_tldrlc(message=user_chat_input.value)
-                    if user_chat_input.value
-                    else None
-                ),
+                on_click=ask_tldrlc,
                 color="success",
                 disabled=task_get_chat_response.pending,
                 # outlined=True,

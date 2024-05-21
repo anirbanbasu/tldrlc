@@ -89,6 +89,7 @@ def show_status_message(message: str, colour: str = "info", timeout: int = 4):
 
 """ General settings """
 global_settings_initialised: solara.Reactive[bool] = solara.reactive(False)
+global_settings_langfuse_enabled: solara.Reactive[bool] = solara.reactive(False)
 
 """ Document ingestion pipeline cache """
 global_cache__ingestion: solara.Reactive[RedisCache] = solara.reactive(None)
@@ -209,7 +210,7 @@ class MessageDict(TypedDict):
 global_knowledge_graph_index: solara.Reactive[KnowledgeGraphIndex] = solara.reactive(
     None
 )
-global_knowledge_vector_index: solara.Reactive[VectorStoreIndex] = solara.reactive(None)
+global_semantic_search_index: solara.Reactive[VectorStoreIndex] = solara.reactive(None)
 global_chat_engine: solara.Reactive[BaseChatEngine] = solara.reactive(None)
 global_chat_messages: solara.Reactive[List[MessageDict]] = solara.reactive([])
 
@@ -255,14 +256,17 @@ def setup_langfuse():
                 tags=langfuse_trace_tags,
             )
             Settings.callback_manager = CallbackManager([langfuse_callback_handler])
+            global_settings_langfuse_enabled.value = True
             logger.warning(
                 f"Using Langfuse at {langfuse__host} for performance evaluation."
             )
         except Exception as langfuse_e:
             logger.error(f"{langfuse_e} Langfuse setup failed. Disabling Langfuse.")
+            global_settings_langfuse_enabled.value = False
             Settings.callback_manager = None
     else:
         Settings.callback_manager = None
+        global_settings_langfuse_enabled.value = False
         logger.warning("Not using Langfuse for performance evaluation.")
 
 

@@ -16,6 +16,7 @@
 
 from typing import Any
 import solara
+from solara.alias import rv
 
 from pages import chatbot, ingest, settings
 from utils import global_state
@@ -44,6 +45,15 @@ def CustomLayout(children: Any = []):
             ):
                 solara.v.Icon(children=["mdi-github-circle"])
             solara.lab.ThemeToggle()
+            with rv.Snackbar(
+                bottom=True,
+                left=True,
+                timeout=0,
+                multi_line=True,
+                color=global_state.status_message_colour.value,
+                v_model=global_state.status_message_show.value,
+            ):
+                solara.Markdown(f"{global_state.status_message.value}")
     return app_layout
 
 

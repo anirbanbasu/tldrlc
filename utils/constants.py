@@ -20,6 +20,13 @@ BOOLEAN_OR = "OR"
 BOOLEAN_NOT = "NOT"
 BOOLEAN_XOR = "XOR"
 
+PROJECT_GIT_REPO_URL = "https://github.com/anirbanbasu/tldrlc"
+PROJECT_GIT_REPO_LABEL = "GitHub repository"
+PROJECT_FULL_NAME = "Too Long Didn't Read Let's Chat (TLDRLC)"
+PROJECT_NAME = "TLDRLC"
+
+HTTP_TARGET_BLANK = "_blank"
+
 ISO639SET1_LANGUAGE_ENGLISH = "en"
 
 CHAR_ENCODING_UTF8 = "utf-8"
@@ -29,10 +36,12 @@ CHAR_ENCODING_UTF8 = "utf-8"
 LOG_FORMAT = "%(levelname)s:\t%(message)s (%(module)s/%(filename)s::%(funcName)s:L%(lineno)d@%(asctime)s) [P%(process)d:T%(thread)d]"
 
 LLM_PROVIDER_COHERE = "Cohere"
+LLM_PROVIDER_LLAMAFILE = "Llamafile"
 LLM_PROVIDER_OLLAMA = "Ollama"
 LLM_PROVIDER_OPENAI = "Open AI"
 LIST_OF_SUPPORTED_LLM_PROVIDERS = [
     LLM_PROVIDER_COHERE,
+    # LLM_PROVIDER_LLAMAFILE,
     LLM_PROVIDER_OLLAMA,
     LLM_PROVIDER_OPENAI,
 ]
@@ -42,8 +51,8 @@ INDEX_CHAT_MODE_CONDENSE_PLUS_CONTEXT = "condense_plus_context"
 INDEX_CHAT_MODE_REACT = "react"
 LIST_OF_INDEX_CHAT_MODES = [
     INDEX_CHAT_MODE_CONTEXT,
-    INDEX_CHAT_MODE_CONDENSE_PLUS_CONTEXT,
-    INDEX_CHAT_MODE_REACT,
+    # INDEX_CHAT_MODE_CONDENSE_PLUS_CONTEXT,
+    # INDEX_CHAT_MODE_REACT,
 ]
 
 LIST_OF_SUMMARY_EXTRACTOR_SUMMARIES = "self prev next".split()
@@ -82,6 +91,7 @@ ENV_KEY_LLM_PROVIDER = "LLM_PROVIDER"
 
 ENV_KEY_COHERE_API_KEY = "COHERE_API_KEY"
 ENV_KEY_OPENAI_API_KEY = "OPENAI_API_KEY"
+ENV_KEY_LLAMAFILE_URL = "LLAMAFILE_URL"
 ENV_KEY_OLLAMA_URL = "OLLAMA_URL"
 ENV_KEY_OLLAMA_MODEL = "OLLAMA_MODEL"
 ENV_KEY_COHERE_MODEL = "COHERE_MODEL"
@@ -133,6 +143,7 @@ ENV_KEY_LOG_LEVEL = "LOG_LEVEL"
 
 # Settings
 DEFAULT_SETTING_LLM_PROVIDER = "Ollama"
+DEFAULT_SETTING_LLAMAFILE_URL = "http://localhost:8080"
 DEFAULT_SETTING_OLLAMA_URL = "http://localhost:11434"
 DEFAULT_SETTING_OLLAMA_MODEL = "llama3"
 DEFAULT_SETTING_COHERE_MODEL = "command-r-plus"
@@ -193,12 +204,23 @@ UI_SOLARA_NOTICE_REMOVE = """
         }
         """
 
+MESSAGE_TLDRLC_WELCOME = """
+        ### Too Long, Didn't Read, Let's Chat (TLDRLC)
+
+        Too Long Didn't Read Let's Chat (TLDRLC) is a chatbot prototype that allows users to chat 
+        with a large language model (LLM) about various data sources. This chatbot utilises retrieval 
+        augmented generation (RAG) with both _knowledge graph_ and _semantic search_. TLDRLC is <u>an experimental software</u>. 
+        It is not associated with any, and should not be  interpreted as a, reliable chatbot service. 
+        The rationale behind this project is experimentation with retrieval augmented generation.
+        """
+
 NOTICE_EU_AI_ACT__MESSAGE = """
             By using this app, you are interacting with an artificial intelligence (AI) system. 
             **You are advised not to take any of its responses as facts**. The AI system is not a 
             substitute for professional advice. If you are unsure about any information, please 
             consult a professional in the field.
             """
-NOTICE_EU_AI_ACT__TITLE = "EU AI Act Transparency notice"
-NOTICE_EU_AI_ACT__OK = "Okay, understood."
-NOTICE_EU_AI_ACT__CANCEL = "Hide this button."
+NOTICE_EU_AI_ACT__TITLE = "European Union AI Act Transparency notice"
+BTN_NOTICE_EU_AI_ACT__OK = "Continue"
+BTN_NOTICE_EU_AI_ACT__MORE = "Learn more"
+BTN_NOTICE_EU_AI_ACT__CANCEL = "Hide this button."

@@ -83,9 +83,9 @@ docker container start tldrlc-container
 
 Following this, the app will be accessible on your Docker host, for example as [http://localhost:8765](http://localhost:8765) -- assuming that nothing else on host is blocking port 8765 when the container starts.
 
-If you want to change the settings of the app itself inside the container, login to the container as `root`. You can do this by running `docker exec -it tldrlc-container bash`. Once, you have the shell access in the container, edit the file `/app/.env` using the `nano` editor that is installed for convenience. For example, you can change the default behaviour of the containerised app to use your preferred remote graph, index and document storage. Then, restart the _same_ container, by running `docker container restart tldrlc-container`. Remember that these changes _will not_ propagate to any new container that you spin out of the image.
+<!-- If you want to change the settings of the app itself inside the container, login to the container as `root`. You can do this by running `docker exec -it tldrlc-container bash`. Once, you have the shell access in the container, edit the file `/app/.env` using the `nano` editor that is installed for convenience. For example, you can change the default behaviour of the containerised app to use your preferred remote graph, index and document storage. Then, restart the _same_ container, by running `docker container restart tldrlc-container`. Remember that these changes _will not_ propagate to any new container that you spin out of the image. -->
 
-The Docker container has to depend on external LLM provider, graph database, document and index storage. If any of these, such as `Ollama`, is running on the Docker host then you should change the host name for the service from the default `localhost` to `host.docker.internal`.
+The Docker container has to depend on external LLM provider, graph database, document and index storage. If any of these, such as `Ollama`, is running on the Docker host then you should use the host name for the service as `host.docker.internal` or `gateway.docker.internal`. See [the networking documentation of Docker desktop](https://docs.docker.com/desktop/networking/) for details.
 
 ### Cloud deployment
 

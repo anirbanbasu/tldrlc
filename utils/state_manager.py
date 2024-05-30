@@ -51,13 +51,16 @@ from llama_index.core import Settings
 from llama_index.core.callbacks import CallbackManager
 from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.embeddings.cohere import CohereEmbedding
+from llama_index.embeddings.llamafile import LlamafileEmbedding
 from llama_index.embeddings.ollama import OllamaEmbedding
 from llama_index.llms.openai import OpenAI
 from llama_index.llms.cohere import Cohere
+from llama_index.llms.llamafile import Llamafile
 from llama_index.llms.ollama import Ollama
 
 
 from langfuse import Langfuse
+from langfuse.decorators import langfuse_context
 from utils.callbacks import TLDRLCLangfuseCallbackHandler
 
 logger = logging.getLogger(__name__)
@@ -90,6 +93,8 @@ def show_status_message(message: str, colour: str = "info", timeout: int = 4):
 """ General settings """
 global_settings_initialised: solara.Reactive[bool] = solara.reactive(False)
 global_settings_langfuse_enabled: solara.Reactive[bool] = solara.reactive(False)
+global_settings_langfuse_tags: solara.Reactive[List[str]] = solara.reactive(None)
+global_client_langfuse_lowlevel: solara.Reactive[Langfuse] = solara.reactive(None)
 
 """ Document ingestion pipeline cache """
 global_cache__ingestion: solara.Reactive[RedisCache] = solara.reactive(None)
@@ -111,6 +116,9 @@ global_settings__openai_model: solara.Reactive[str] = solara.reactive(
     constants.EMPTY_STRING
 )
 global_settings__openai_api_key: solara.Reactive[str] = solara.reactive(
+    constants.EMPTY_STRING
+)
+global_settings__llamafile_url: solara.Reactive[str] = solara.reactive(
     constants.EMPTY_STRING
 )
 global_settings__ollama_url: solara.Reactive[str] = solara.reactive(
@@ -220,7 +228,7 @@ def md5_hash(some_string):
 
 
 def setup_langfuse():
-    """Setup (or, disable) Langfuse for performance evaluation."""
+    """Setup (or, disable) Langfuse for performance evaluation. Configure both decorator level and low-level API."""
     use_langfuse = bool(
         os.getenv(
             constants.ENV_KEY_EVAL_USE_LANGFUSE,
@@ -233,19 +241,18 @@ def setup_langfuse():
         langfuse__public_key = os.getenv(constants.ENV_KEY_LANGFUSE_PUBLIC_KEY)
         langfuse__host = os.getenv(constants.ENV_KEY_LANGFUSE_HOST)
         try:
-            langfuse = Langfuse(
+            global_client_langfuse_lowlevel.value = Langfuse(
                 public_key=langfuse__public_key,
                 secret_key=langfuse__secret_key,
                 host=langfuse__host,
             )
-            langfuse.auth_check()
+            global_client_langfuse_lowlevel.value.auth_check()
             # Setup LangFuse tags for the handler, if necessary
             env__langfuse_trace_tags = os.getenv(
                 constants.ENV_KEY_LANGFUSE_TRACE_TAGS, None
             )
-            langfuse_trace_tags = None
             if env__langfuse_trace_tags is not None:
-                langfuse_trace_tags = [
+                global_settings_langfuse_tags.value = [
                     x.strip() for x in env__langfuse_trace_tags.split(",")
                 ]
             # Setup the callback handler
@@ -253,19 +260,33 @@ def setup_langfuse():
                 secret_key=langfuse__secret_key,
                 public_key=langfuse__public_key,
                 host=langfuse__host,
-                tags=langfuse_trace_tags,
+                tags=global_settings_langfuse_tags.value,
             )
             Settings.callback_manager = CallbackManager([langfuse_callback_handler])
             global_settings_langfuse_enabled.value = True
+            langfuse_context.configure(
+                public_key=langfuse__public_key,
+                secret_key=langfuse__secret_key,
+                host=langfuse__host,
+                enabled=True,
+            )
             logger.warning(
                 f"Using Langfuse at {langfuse__host} for performance evaluation."
             )
         except Exception as langfuse_e:
-            logger.error(f"{langfuse_e} Langfuse setup failed. Disabling Langfuse.")
-            global_settings_langfuse_enabled.value = False
             Settings.callback_manager = None
+            langfuse_context.configure(
+                enabled=False,
+            )
+            global_settings_langfuse_enabled.value = False
+            global_client_langfuse_lowlevel.value = None
+            logger.error(f"{langfuse_e} Langfuse setup failed. Disabling Langfuse.")
     else:
         Settings.callback_manager = None
+        global_client_langfuse_lowlevel.value = None
+        langfuse_context.configure(
+            enabled=False,
+        )
         global_settings_langfuse_enabled.value = False
         logger.warning("Not using Langfuse for performance evaluation.")
 
@@ -299,6 +320,16 @@ def update_llm_settings(callback_data: Any = None):
             )
             Settings.embed_model = OpenAIEmbedding()
             global_settings__llm_provider_notice.value = "Open AI is being used as the language model provider. Ensure that you have set the Open AI API key correctly from the Settings page."
+        case constants.LLM_PROVIDER_LLAMAFILE:
+            Settings.llm = Llamafile(
+                base_url=global_settings__llamafile_url.value,
+                request_timeout=global_settings__llm_request_timeout.value,
+                temperature=global_settings__llm_temperature.value,
+                system_prompt=global_settings__llm_system_message.value,
+            )
+            Settings.embed_model = LlamafileEmbedding(
+                base_url=global_settings__llamafile_url.value,
+            )
         case constants.LLM_PROVIDER_OLLAMA:
             Settings.llm = Ollama(
                 model=global_settings__ollama_model.value,
@@ -425,6 +456,9 @@ def initialise_default_settings():
         )
         global_settings__openai_api_key.value = os.getenv(
             constants.ENV_KEY_OPENAI_API_KEY, None
+        )
+        global_settings__llamafile_url.value = os.getenv(
+            constants.ENV_KEY_LLAMAFILE_URL, constants.DEFAULT_SETTING_LLAMAFILE_URL
         )
         global_settings__ollama_url.value = os.getenv(
             constants.ENV_KEY_OLLAMA_URL, constants.DEFAULT_SETTING_OLLAMA_URL

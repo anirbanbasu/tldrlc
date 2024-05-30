@@ -20,10 +20,10 @@ RUN apt-get update && apt-get -y upgrade && apt-get -y install nano build-essent
 
 # Create a non-root user
 RUN useradd -m -u 1000 app_user
-USER app_user
 
 ENV HOME="/home/app_user"
 
+USER app_user
 # Set the working directory in the container
 WORKDIR $HOME/app
 
@@ -42,12 +42,10 @@ ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 RUN $VIRTUAL_ENV/bin/pip install --no-cache-dir -r requirements.txt
 
 # Copy the project files
-COPY ./*.md ./LICENSE ./*.py ./*.sh ./
+COPY ./*.md ./LICENSE ./*.py ./*.sh ./*.css ./
 COPY ./.env.docker /.env
-COPY ./pages/*.py ./pages/
+COPY ./ui/*.py ./ui/
 COPY ./utils/*.py ./utils/
-#RUN chown -R app_user:app_user $HOME/app
-#RUN chmod +x $HOME/app/*.sh
 
 # Expose the port to conect
 EXPOSE 8765

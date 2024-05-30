@@ -1,0 +1,99 @@
+.solara-autorouter-content {
+    display: flex;
+    flex-direction: column;
+    justify-content: stretch;
+}
+
+.solara-markdown {
+    width: 100%;
+    max-width: 100%;
+    margin: auto;
+}
+
+.v-stepper {
+    box-shadow: none;
+    border-style: none;
+}
+
+.v-stepper__header {
+    box-shadow: none;
+    border-style: none;
+}
+
+.v-stepper__items {
+    box-shadow: none;
+    border-style: none;
+}
+
+.v-stepper__content {
+    box-shadow: none;
+    border-style: none;
+}
+
+.v-card {
+    margin-bottom: 2rem;
+    margin-top: 0rem;
+    margin-left: 1rem;
+    margin-right: 1rem;
+    padding: 0.2rem;
+}
+
+.v-toolbar__title {
+    display: flex;
+    align-items: center;
+    column-gap: 0.5rem;
+}
+
+.ui-container {
+    height: 95vh;
+    justify-content: center;
+    padding: 45px 50px 75px 50px;
+}
+
+.chat-interface {
+    height: 100%;
+    width: 38vw;
+    justify-content: center;
+    position: relative;
+}
+
+.chat-interface:after {
+    content: "";
+    position: absolute;
+    z-index: 1;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+    background-image: linear-gradient(to top, rgba(255, 255, 255, 0), rgba(255, 255, 255, 1) 100%);
+    width: 100%;
+    height: 15%;
+}
+
+.v-application--wrap > div:nth-child(2) > div:nth-child(2){
+    display: none !important;
+}
+
+@media screen and (max-aspect-ratio: 1/1) {
+    .ui-container {
+        padding: 30px;
+        height: 100vh;
+    }
+
+    .container-row {
+        flex-direction: column-reverse !important;
+        width: 100% !important;
+    }
+
+    .chat-interface {
+        width: unset;
+        justify-content: flex-end;
+    }
+
+    .link-container{
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        padding: 0 30px;
+    }
+}

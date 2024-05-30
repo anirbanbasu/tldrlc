@@ -21,6 +21,8 @@ import requests
 import logging
 import nest_asyncio
 
+from langfuse.decorators import observe, langfuse_context
+
 from llama_index.core.readers.base import BasePydanticReader
 from llama_index.readers.wikipedia import WikipediaReader
 from llama_index.readers.web import BeautifulSoupWebReader, TrafilaturaWebReader
@@ -60,8 +62,7 @@ from solara.lab import task, Task, use_task
 import wikipedia
 from linkpreview import Link, LinkPreview, LinkGrabber
 
-import utils.global_state as global_state
-from utils.global_state import show_status_message
+import utils.state_manager as sm
 import utils.constants as constants
 from utils.retrievers import VectorKnowledgeGraphRetriever
 
@@ -100,11 +101,13 @@ last_ingested_data_source: solara.Reactive[str] = solara.reactive(
     constants.EMPTY_STRING
 )
 
+ingestion_data_source: solara.Reactive[str] = solara.reactive(constants.EMPTY_STRING)
+
 
 def load_remote_pdf_data(pdf_url: str) -> List[Document]:
     """Download the PDF from the URL and load its data as text."""
     pdf_response = requests.get(pdf_url, timeout=30)
-    pdf_filename = f"__tmp-{global_state.md5_hash(pdf_url)}.pdf"
+    pdf_filename = f"__tmp-{sm.md5_hash(pdf_url)}.pdf"
     with open(pdf_filename, "wb") as pdf:
         pdf.write(pdf_response.content)
         pdf.close()
@@ -115,15 +118,16 @@ def load_remote_pdf_data(pdf_url: str) -> List[Document]:
     return pdf_docs
 
 
+@observe(as_type="span")
 def initialise_chat_engine() -> bool:
     """Initialise the chat engine with the knowledge graph index if it has been initialised."""
     post_processors = []
     if (
-        global_state.global_settings__language_model_provider.value
+        sm.global_settings__language_model_provider.value
         == constants.LLM_PROVIDER_COHERE
     ):
         post_processors.append(
-            CohereRerank(api_key=global_state.global_settings__cohere_api_key.value)
+            CohereRerank(api_key=sm.global_settings__cohere_api_key.value)
         )
     else:
         # post_processors.append(SentenceTransformerRerank(keep_retrieval_score=True))
@@ -133,17 +137,17 @@ def initialise_chat_engine() -> bool:
     # post_processors.append(LongContextReorder())
 
     if (
-        global_state.global_knowledge_graph_index.value is not None
-        and global_state.global_semantic_search_index.value is not None
+        sm.global_knowledge_graph_index.value is not None
+        and sm.global_semantic_search_index.value is not None
     ):
-        global_state.global_chat_engine.value = None
-        if global_state.global_llamaindex_chat_memory.value is not None:
-            global_state.global_llamaindex_chat_memory.value.reset()
-        show_status_message(
-            message=f"**Initialising chat engine** from index using the _{global_state.global_settings__index_chat_mode.value}_ chat mode."
+        sm.global_chat_engine.value = None
+        if sm.global_llamaindex_chat_memory.value is not None:
+            sm.global_llamaindex_chat_memory.value.reset()
+        sm.show_status_message(
+            message=f"**Initialising chat engine** from index using the _{sm.global_settings__index_chat_mode.value}_ chat mode."
         )
         kg_retriever = KGTableRetriever(
-            index=global_state.global_knowledge_graph_index.value,
+            index=sm.global_knowledge_graph_index.value,
             embed_model=Settings.embed_model,
             retriever_mode="hybrid",
             graph_store_query_depth=2,
@@ -151,7 +155,7 @@ def initialise_chat_engine() -> bool:
             verbose=True,
         )
         vector_retriever = VectorIndexRetriever(
-            index=global_state.global_semantic_search_index.value,
+            index=sm.global_semantic_search_index.value,
             embed_model=Settings.embed_model,
             verbose=True,
         )
@@ -165,14 +169,17 @@ def initialise_chat_engine() -> bool:
             response_synthesizer=response_synthesizer,
             node_postprocessors=post_processors,
         )
-        global_state.global_chat_engine.value = ContextChatEngine.from_defaults(
+        sm.global_chat_engine.value = ContextChatEngine.from_defaults(
             retriever=retriever,
             query_engine=query_engine,
             llm=Settings.llm,
             verbose=True,
-            memory=global_state.global_llamaindex_chat_memory.value,
-            system_prompt=global_state.global_settings__llm_system_message.value,
+            memory=sm.global_llamaindex_chat_memory.value,
+            system_prompt=sm.global_settings__llm_system_message.value,
             streaming=True,
+        )
+        langfuse_context.update_current_observation(
+            tags=sm.global_settings_langfuse_tags.value
         )
         return True
     else:
@@ -181,6 +188,7 @@ def initialise_chat_engine() -> bool:
         )
 
 
+@observe(as_type="generation")
 def build_index_pipeline() -> bool:
     """Build the knowledge graph index from the documents using an ingestion pipeline."""
     # Try to output some kind of progress bar state?
@@ -193,71 +201,76 @@ def build_index_pipeline() -> bool:
             include_prev_next_rel=True,
         ),
     ]
-    if global_state.global_settings__di_enable_title_extractor.value:
+    if sm.global_settings__di_enable_title_extractor.value:
         transformations.append(
             TitleExtractor(
-                nodes=global_state.global_settings__di_enable_title_extractor_nodes.value
+                nodes=sm.global_settings__di_enable_title_extractor_nodes.value
             )
         )
-    if global_state.global_settings__di_enable_keyword_extractor.value:
+    if sm.global_settings__di_enable_keyword_extractor.value:
         transformations.append(
             KeywordExtractor(
-                keywords=global_state.global_settings__di_enable_keyword_extractor_keywords.value
+                keywords=sm.global_settings__di_enable_keyword_extractor_keywords.value
             )
         )
-    if global_state.global_settings__di_enable_qa_extractor.value:
+    if sm.global_settings__di_enable_qa_extractor.value:
         transformations.append(
             QuestionsAnsweredExtractor(
-                questions=global_state.global_settings__di_enable_qa_extractor_questions.value
+                questions=sm.global_settings__di_enable_qa_extractor_questions.value
             )
         )
-    if global_state.global_settings__di_enable_summary_extractor.value:
+    if sm.global_settings__di_enable_summary_extractor.value:
         transformations.append(
             SummaryExtractor(
-                summaries=global_state.global_settings__di_enable_summary_extractor_summaries.value
+                summaries=sm.global_settings__di_enable_summary_extractor_summaries.value
             )
         )
     pipeline = IngestionPipeline(
         # disable_cache=True,
         transformations=transformations,
         cache=IngestionCache(
-            cache=global_state.global_cache__ingestion.value,
+            cache=sm.global_cache__ingestion.value,
         )
-        if global_state.global_cache__ingestion.value
+        if sm.global_cache__ingestion.value
         else None,
         # docstore=global_state.global_llamaindex_storage_context.value.docstore,
     )
-    show_status_message(
+    sm.show_status_message(
         message=f"**Running ingestion pipeline** to apply {len(pipeline.transformations)} transformation(s) on {len(ingested_documents.value)} document(s).",
         timeout=0,
     )
     nest_asyncio.apply()
     chunk_nodes = pipeline.run(documents=ingested_documents.value, show_progress=True)
-    show_status_message(
+    sm.show_status_message(
         message=f"**Building knowledge graph index** from {len(chunk_nodes)} chunks extracted from {len(ingested_documents.value)} document(s).",
         timeout=0,
     )
-    global_state.global_knowledge_graph_index.value = KnowledgeGraphIndex(
+    sm.global_knowledge_graph_index.value = KnowledgeGraphIndex(
         nodes=chunk_nodes,
         llm=Settings.llm,
         embed_model=Settings.embed_model,
-        storage_context=global_state.global_llamaindex_storage_context.value,
-        max_triplets_per_chunk=global_state.global_settings__index_max_triplets_per_chunk.value,
-        include_embeddings=global_state.global_settings__index_include_embeddings.value,
+        storage_context=sm.global_llamaindex_storage_context.value,
+        max_triplets_per_chunk=sm.global_settings__index_max_triplets_per_chunk.value,
+        include_embeddings=sm.global_settings__index_include_embeddings.value,
         show_progress=True,
     )
-    global_state.global_knowledge_graph_index.value.storage_context.docstore.add_documents(
+    sm.global_knowledge_graph_index.value.storage_context.docstore.add_documents(
         chunk_nodes
     )
-    show_status_message(
+    sm.show_status_message(
         message=f"**Building semantic search index** from {len(chunk_nodes)} chunks extracted from {len(ingested_documents.value)} document(s).",
         timeout=0,
     )
-    global_state.global_semantic_search_index.value = VectorStoreIndex(
+    sm.global_semantic_search_index.value = VectorStoreIndex(
         nodes=chunk_nodes,
         embed_model=Settings.embed_model,
         show_progress=True,
-        storage_context=global_state.global_llamaindex_storage_context.value,
+        storage_context=sm.global_llamaindex_storage_context.value,
+    )
+    langfuse_context.update_current_observation(
+        input=ingested_documents.value,
+        metadata=pipeline.dict(),
+        tags=sm.global_settings_langfuse_tags.value,
     )
     return True
 
@@ -275,26 +288,27 @@ def build_index() -> bool:
     chunk_nodes = chunk_parser.get_nodes_from_documents(
         documents=ingested_documents.value, show_progress=True
     )
-    show_status_message(
+    sm.show_status_message(
         message=f"**Building index** from {len(chunk_nodes)} extracted chunks.",
         timeout=0,
     )
-    global_state.global_knowledge_graph_index.value = KnowledgeGraphIndex(
+    sm.global_knowledge_graph_index.value = KnowledgeGraphIndex(
         nodes=chunk_nodes,
         llm=Settings.llm,
         embed_model=Settings.embed_model,
-        storage_context=global_state.global_llamaindex_storage_context.value,
-        max_triplets_per_chunk=global_state.global_settings__index_max_triplets_per_chunk.value,
-        include_embeddings=global_state.global_settings__index_include_embeddings.value,
+        storage_context=sm.global_llamaindex_storage_context.value,
+        max_triplets_per_chunk=sm.global_settings__index_max_triplets_per_chunk.value,
+        include_embeddings=sm.global_settings__index_include_embeddings.value,
         show_progress=True,
     )
-    global_state.global_knowledge_graph_index.value.storage_context.docstore.add_documents(
+    sm.global_knowledge_graph_index.value.storage_context.docstore.add_documents(
         chunk_nodes
     )
     return True
 
 
 @task(prefer_threaded=True)
+@observe()
 async def ingest_wikipedia_data():
     """Ingest the selected Wikipedia article."""
     global ingested_documents
@@ -307,11 +321,11 @@ async def ingest_wikipedia_data():
         if len(articles_list) == 0:
             raise ValueError("No Wikipedia article titles found in the input.")
         elif len(articles_list) == 1:
-            show_status_message(
+            sm.show_status_message(
                 message=f"**Fetching** article '_{wikipedia_article.value}_' from Wikipedia ({wikipedia_language_prefix.value})."
             )
         else:
-            show_status_message(
+            sm.show_status_message(
                 message=f"""
                 **Fetching** {len(articles_list)} articles from Wikipedia ({wikipedia_language_prefix.value}).
 
@@ -337,20 +351,26 @@ async def ingest_wikipedia_data():
         initialisation_status = build_index_pipeline()
         initialisation_status = initialisation_status and initialise_chat_engine()
         if initialisation_status:
-            show_status_message(
+            sm.show_status_message(
                 message=f"**Done** ingesting article(s) {', '.join([f'\'_{article}_\'' for article in articles_list])} from Wikipedia ({wikipedia_language_prefix.value}). You can now chat with the AI.",
                 colour="success",
             )
     except Exception as e:
-        show_status_message(
+        sm.show_status_message(
             message=f"**Error** ingesting Wikipedia article(s).<br/>{str(e)}",
             colour="error",
             timeout=8,
         )
         logger.error(f"Error ingesting Wikipedia article(s). {str(e)}")
+    finally:
+        langfuse_context.update_current_trace(
+            tags=sm.global_settings_langfuse_tags.value
+        )
+        langfuse_context.flush()
 
 
 @task(prefer_threaded=True)
+@observe()
 async def ingest_arxiv_data():
     """Ingest the arXiv results."""
     global ingested_documents
@@ -358,13 +378,11 @@ async def ingest_arxiv_data():
         ingested_documents.value = []
         last_ingested_data_source.value = constants.EMPTY_STRING
         reader = ArxivReader()
-        show_status_message(
+        sm.show_status_message(
             message=f"**Fetching** results of arXiv query `{arxiv_query.value}`.",
         )
         ingested_documents.value = reader.load_data(
-            papers_dir=global_state.md5_hash(
-                f"{datetime.datetime.now()}-{random.random()}"
-            ),
+            papers_dir=sm.md5_hash(f"{datetime.datetime.now()}-{random.random()}"),
             search_query=arxiv_query.value,
         )
         last_ingested_data_source.value = constants.SOURCE_TYPE_ARXIV
@@ -373,20 +391,26 @@ async def ingest_arxiv_data():
         initialisation_status = build_index_pipeline()
         initialisation_status = initialisation_status and initialise_chat_engine()
         if initialisation_status:
-            show_status_message(
+            sm.show_status_message(
                 message=f"**Done** ingesting results of arXiv query `{arxiv_query.value}`. You can now chat with the AI.",
                 colour="success",
             )
     except Exception as e:
-        show_status_message(
+        sm.show_status_message(
             message=f"**Error** ingesting arXiv results.<br/>{str(e)}",
             colour="error",
             timeout=8,
         )
         logger.error(f"Error ingesting arXiv results. {str(e)}")
+    finally:
+        langfuse_context.update_current_trace(
+            tags=sm.global_settings_langfuse_tags.value
+        )
+        langfuse_context.flush()
 
 
 @task(prefer_threaded=True)
+@observe()
 async def ingest_pubmed_data():
     """Ingest the Pubmed results."""
     global ingested_documents
@@ -394,7 +418,7 @@ async def ingest_pubmed_data():
         ingested_documents.value = []
         last_ingested_data_source.value = constants.EMPTY_STRING
         reader = PubmedReader()
-        show_status_message(
+        sm.show_status_message(
             message=f"**Fetching** results of Pubmed query `{pubmed_query.value}`.",
         )
         ingested_documents.value = reader.load_data(
@@ -406,20 +430,26 @@ async def ingest_pubmed_data():
         initialisation_status = build_index_pipeline()
         initialisation_status = initialisation_status and initialise_chat_engine()
         if initialisation_status:
-            show_status_message(
+            sm.show_status_message(
                 message=f"**Done** ingesting results of Pubmed query `{pubmed_query.value}`. You can now chat with the AI.",
                 colour="success",
             )
     except Exception as e:
-        show_status_message(
+        sm.show_status_message(
             message=f"**Error** ingesting Pubmed results.<br/>{str(e)}",
             colour="error",
             timeout=8,
         )
         logger.error(f"Error ingesting Pubmed results. {str(e)}")
+    finally:
+        langfuse_context.update_current_trace(
+            tags=sm.global_settings_langfuse_tags.value
+        )
+        langfuse_context.flush()
 
 
 @task(prefer_threaded=True)
+@observe()
 async def ingest_webpage_data():
     """Ingest the selected webpage."""
     global ingested_documents
@@ -437,11 +467,11 @@ async def ingest_webpage_data():
         if len(urls_list) == 0:
             raise ValueError("No web page URLs found in the input.")
         elif len(urls_list) == 1:
-            show_status_message(
+            sm.show_status_message(
                 message=f"**Fetching** web page [{urls_list[0]}]({urls_list[0]}) using the `{webpage_reader.value}` reader."
             )
         else:
-            show_status_message(
+            sm.show_status_message(
                 message=f"""
                 **Fetching** {len(urls_list)} web pages using the `{webpage_reader.value}` reader.
 
@@ -455,27 +485,33 @@ async def ingest_webpage_data():
         initialisation_status = build_index_pipeline()
         initialisation_status = initialisation_status and initialise_chat_engine()
         if initialisation_status:
-            show_status_message(
+            sm.show_status_message(
                 message=f"**Done** ingesting web page(s) from {', '.join([f'[{url}]({url})' for url in urls_list])}. You can now chat with the AI.",
                 colour="success",
             )
     except Exception as e:
-        show_status_message(
+        sm.show_status_message(
             message=f"**Error** ingesting web page(s).<br/>{str(e)}",
             colour="error",
             timeout=8,
         )
         logger.error(f"Error ingesting web page(s). {str(e)}")
+    finally:
+        langfuse_context.update_current_trace(
+            tags=sm.global_settings_langfuse_tags.value
+        )
+        langfuse_context.flush()
 
 
 @task(prefer_threaded=True)
+@observe()
 async def ingest_pdfurl_data():
     """Ingest the PDF (URL) results."""
     global ingested_documents
     try:
         ingested_documents.value = []
         last_ingested_data_source.value = constants.EMPTY_STRING
-        show_status_message(
+        sm.show_status_message(
             message=f"**Fetching** PDF [{pdf_url.value}]({pdf_url.value})."
         )
         ingested_documents.value = load_remote_pdf_data(
@@ -487,62 +523,73 @@ async def ingest_pdfurl_data():
         initialisation_status = build_index_pipeline()
         initialisation_status = initialisation_status and initialise_chat_engine()
         if initialisation_status:
-            show_status_message(
+            sm.show_status_message(
                 message=f"**Done** ingesting PDF from [{pdf_url.value}]({pdf_url.value}). You can now chat with the AI.",
                 colour="success",
             )
     except Exception as e:
-        show_status_message(
+        sm.show_status_message(
             message=f"**Error** ingesting PDF (URL).<br/>{str(e)}",
             colour="error",
             timeout=8,
         )
         logger.error(f"Error ingesting PDF (URL). {str(e)}")
+    finally:
+        langfuse_context.update_current_trace(
+            tags=sm.global_settings_langfuse_tags.value
+        )
+        langfuse_context.flush()
 
 
 @task(prefer_threaded=True)
+@observe()
 async def load_existing_indices():
     """Load the existing indices from the storage context."""
     try:
         initialisation_status: bool = False
-        if global_state.global_llamaindex_storage_context.value is not None:
+        if sm.global_llamaindex_storage_context.value is not None:
             last_ingested_data_source.value = constants.EMPTY_STRING
-            show_status_message(
+            sm.show_status_message(
                 message=f"**Loading knowledge graph index** with ID _{existing_knowledge_graph_index.value}_.",
             )
-            global_state.global_knowledge_graph_index.value = load_index_from_storage(
-                storage_context=global_state.global_llamaindex_storage_context.value,
+            sm.global_knowledge_graph_index.value = load_index_from_storage(
+                storage_context=sm.global_llamaindex_storage_context.value,
                 index_id=existing_knowledge_graph_index.value,
             )
-            show_status_message(
+            sm.show_status_message(
                 message=f"**Loading semantic search index** with ID _{existing_vector_index.value}_.",
             )
-            global_state.global_semantic_search_index.value = load_index_from_storage(
-                storage_context=global_state.global_llamaindex_storage_context.value,
+            sm.global_semantic_search_index.value = load_index_from_storage(
+                storage_context=sm.global_llamaindex_storage_context.value,
                 index_id=existing_vector_index.value,
             )
             last_ingested_data_source.value = constants.SOURCE_TYPE_INDICES
             initialisation_status = initialise_chat_engine()
             if initialisation_status:
-                show_status_message(
+                sm.show_status_message(
                     message=f"**Done** loading knowledge graph index _{existing_knowledge_graph_index.value}_ and semantic search index _{existing_vector_index.value}_ from storage. You can now chat with the AI.",
                     colour="success",
                 )
         else:
             raise ValueError("Storage context is not available.")
     except Exception as e:
-        show_status_message(
+        sm.show_status_message(
             message=f"**Error** loading indice(s).<br/>{str(e)}",
             colour="error",
             timeout=8,
         )
         logger.error(f"Error loading indice(s). {str(e)}")
+    finally:
+        langfuse_context.update_current_trace(
+            tags=sm.global_settings_langfuse_tags.value
+        )
+        langfuse_context.flush()
 
 
 def load_wikipedia_languages():
     """Load the list of supported Wikipedia languages."""
     if len(wikipedia_languages.value) == 0:
-        show_status_message(message="**Initialising** Wikipedia languages.")
+        sm.show_status_message(message="**Initialising** Wikipedia languages.")
         wp_lang_dict = wikipedia.languages()
         wikipedia_languages.value = list(
             {"language": f"{v[1]} ({v[0]})", "code": v[0]} for v in wp_lang_dict.items()
@@ -554,7 +601,7 @@ def ExistingIndicesSourceComponent():
     """Component for loading existing indices."""
 
     with solara.Card(
-        "Source indices",
+        # "Source indices",
         subtitle="""
                 Enter the index IDs for the knowledge graph index and the associated semantic search index that you wish to load.
                 """,
@@ -588,7 +635,7 @@ def WikipediaSourceComponent():
     """Component for selecting a Wikipedia article as a data source."""
 
     with solara.Card(
-        "Wikipedia article(s) as data source",
+        # "Wikipedia article(s) as data source",
         subtitle="""
                 Select the Wikipedia language and input the article title or reference. To ingest multiple articles, separate them with [ __ ], all of which must be in the same selected Wikipedia language.
                 """,
@@ -631,33 +678,31 @@ def WikipediaSourceComponent():
                     or not wikipedia_article.value,
                 )
                 solara.ProgressLinear(ingest_wikipedia_data.pending)
-                if ingest_wikipedia_data.finished:
-                    if (
-                        last_ingested_data_source.value
-                        == constants.SOURCE_TYPE_WIKIPEDIA
-                        and len(ingested_documents.value) > 0
+                if (
+                    last_ingested_data_source.value == constants.SOURCE_TYPE_WIKIPEDIA
+                    and len(ingested_documents.value) > 0
+                ):
+                    with rv.ExpansionPanels(
+                        inset=True,
+                        hover=True,
+                        value=0 if len(ingested_documents.value) == 1 else None,
                     ):
-                        with rv.ExpansionPanels(
-                            inset=True,
-                            hover=True,
-                            value=0 if len(ingested_documents.value) == 1 else None,
-                        ):
-                            solara.Text(
-                                f"Fetched {len(ingested_documents.value)} Wikipedia {'articles' if len(ingested_documents.value) > 1 else 'article'}"
-                            )
-                            for doc in ingested_documents.value:
-                                wp = wikipedia.page(pageid=doc.doc_id)
-                                with rv.ExpansionPanel():
-                                    with rv.ExpansionPanelHeader():
-                                        solara.Markdown(
-                                            f"**Article ID**: {doc.doc_id} **Title**: {wp.title}"
-                                        )
-                                    with rv.ExpansionPanelContent():
-                                        solara.Markdown("### Article summary")
-                                        solara.Text(wp.summary)
-                                        solara.Markdown(
-                                            f"<a href='{wp.url}' target='_blank'>Read the original article (opens in a new browser tab or window).</a>"
-                                        )
+                        solara.Text(
+                            f"Fetched {len(ingested_documents.value)} Wikipedia {'articles' if len(ingested_documents.value) > 1 else 'article'}"
+                        )
+                        for doc in ingested_documents.value:
+                            wp = wikipedia.page(pageid=doc.doc_id)
+                            with rv.ExpansionPanel():
+                                with rv.ExpansionPanelHeader():
+                                    solara.Markdown(
+                                        f"**Article ID**: {doc.doc_id} **Title**: {wp.title}"
+                                    )
+                                with rv.ExpansionPanelContent():
+                                    solara.Markdown("### Article summary")
+                                    solara.Text(wp.summary)
+                                    solara.Markdown(
+                                        f"<a href='{wp.url}' target='_blank'>Read the original article (opens in a new browser tab or window).</a>"
+                                    )
 
 
 @solara.component
@@ -665,7 +710,7 @@ def ArxivSourceComponent():
     """Component for selecting an arXiv article or search as data source."""
 
     with solara.Card(
-        "Source article or search query",
+        # "Source article or search query",
         subtitle="""
                 Input a specific article or a search query for arXiv.
                 """,
@@ -709,7 +754,7 @@ def PubmedSourceComponent():
     """Component for selecting a Pubmed search as data source."""
 
     with solara.Card(
-        "Source search query",
+        # "Source search query",
         subtitle="""
                 Input a search query for Pubmed.
                 """,
@@ -753,7 +798,7 @@ def WebpageSourceComponent():
     """Component for selecting a web page as a data source."""
 
     with solara.Card(
-        "Source web page",
+        # "Source web page",
         subtitle="""
                 Enter the URL of a web page. You can enter multiple URLs, separated by space. If any URL contains spaces, enter a url-encoded version of that URL.
                 """,
@@ -845,7 +890,7 @@ def PDFURLSourceComponent():
     """Component for selecting a PDF (URL) as data source."""
 
     with solara.Card(
-        "Source PDF (URL)",
+        # "Source PDF (URL)",
         subtitle="""
                 Input a URL to a PDF.
                 """,
@@ -885,29 +930,14 @@ def PDFURLSourceComponent():
 
 
 @solara.component
-def Page():
-    """Main settings page."""
-    # Remove the "This website runs on Solara" message
-    solara.Style(constants.UI_SOLARA_NOTICE_REMOVE)
-
-    with solara.Head():
-        solara.Title("Data ingestion")
-
-    with solara.AppBarTitle():
-        solara.Text("Ingest data")
-
-    if (
-        global_state.global_settings__llm_provider_notice.value
-        is not constants.EMPTY_STRING
-    ):
-        solara.Info(
-            icon=True, label=global_state.global_settings__llm_provider_notice.value
-        )
+def IngestAllComponent():
+    if sm.global_settings__llm_provider_notice.value is not constants.EMPTY_STRING:
+        solara.Info(icon=True, label=sm.global_settings__llm_provider_notice.value)
 
     with rv.ExpansionPanels(popout=True, hover=True, accordion=True, tabbable=False):
         disable_index_loading = (
-            global_state.global_settings__neo4j_disable.value
-            or global_state.global_settings__redis_disable.value
+            sm.global_settings__neo4j_disable.value
+            or sm.global_settings__redis_disable.value
         )
         with rv.ExpansionPanel(disabled=disable_index_loading):
             with rv.ExpansionPanelHeader():
@@ -916,7 +946,7 @@ def Page():
                 )
                 if disable_index_loading:
                     solara.Warning(
-                        "Index loading is disabled since graph, documents and indices storage settings are currently set to live in memory only."
+                        "Index loading is disabled since graph, documents and indices storage are currently set to live in memory only."
                     )
             with rv.ExpansionPanelContent():
                 ExistingIndicesSourceComponent()
@@ -951,3 +981,46 @@ def Page():
                 )
             with rv.ExpansionPanelContent():
                 PubmedSourceComponent()
+
+
+@solara.component
+def IngestSelectiveComponent():
+    solara.Select(
+        label="Type of data source to ingest from",
+        value=ingestion_data_source,
+        values=constants.LIST_OF_SOURCE_TYPES,
+        disabled=(
+            ingest_webpage_data.pending
+            or ingest_pdfurl_data.pending
+            or ingest_wikipedia_data.pending
+            or ingest_arxiv_data.pending
+            or ingest_pubmed_data.pending
+        ),
+    )
+    disable_index_loading = (
+        sm.global_settings__neo4j_disable.value
+        or sm.global_settings__redis_disable.value
+    )
+
+    match ingestion_data_source.value:
+        case constants.SOURCE_TYPE_INDICES:
+            # solara.Markdown(
+            #     "**Existing indices**: _Load saved on an external document and indices storage._"
+            # )
+            if disable_index_loading:
+                solara.Warning(
+                    "Index loading is disabled since graph, documents and indices storage are currently set to live in memory only."
+                )
+            else:
+                ExistingIndicesSourceComponent()
+        case constants.SOURCE_TYPE_WEBPAGE:
+            # solara.Markdown("**Web page**: _Ingest one or more web pages._")
+            WebpageSourceComponent()
+        case constants.SOURCE_TYPE_PDF:
+            PDFURLSourceComponent()
+        case constants.SOURCE_TYPE_WIKIPEDIA:
+            WikipediaSourceComponent()
+        case constants.SOURCE_TYPE_ARXIV:
+            ArxivSourceComponent()
+        case constants.SOURCE_TYPE_PUBMED:
+            PubmedSourceComponent()

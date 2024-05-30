@@ -158,6 +158,33 @@ def Page():
                         """,
                     )
                     ingest_uic.IngestSelectiveComponent()
+                    if (
+                        sm.global_knowledge_graph_index.value is not None
+                        and sm.global_semantic_search_index.value is not None
+                    ):
+                        solara.Markdown(
+                            "You can use the following index IDs to reload the knowledge graph and semantic search indices."
+                        )
+                        rv.Alert(
+                            type="success",
+                            outlined=True,
+                            icon="mdi-graph-outline",
+                            children=[
+                                solara.Markdown(
+                                    f"**Knowledge graph**: {sm.global_knowledge_graph_index.value.index_id}"
+                                )
+                            ],
+                        )
+                        rv.Alert(
+                            type="success",
+                            outlined=True,
+                            icon="mdi-vector-combine",
+                            children=[
+                                solara.Markdown(
+                                    f"**Semantic search**: {sm.global_semantic_search_index.value.index_id}"
+                                )
+                            ],
+                        )
                     with rv.CardActions():
                         solara.Button(
                             "LLM",

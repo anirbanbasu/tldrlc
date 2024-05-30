@@ -10,6 +10,10 @@
     margin: auto;
 }
 
+.v-alert {
+    margin: 1rem;
+}
+
 .v-stepper {
     box-shadow: none;
     border-style: none;

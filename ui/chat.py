@@ -265,9 +265,9 @@ def ChatInterface():
                         ),
                         color=(
                             (
-                                solara.lab.theme.themes.dark.primary
+                                solara.lab.theme.themes.dark.accent
                                 if solara.lab.use_dark_effective()
-                                else (solara.lab.theme.themes.light.primary)
+                                else (solara.lab.theme.themes.light.accent)
                             )
                             if item[constants.CHAT_KEY_ROLE]
                             == constants.CHAT_KEY_VALUE_ASSISTANT
@@ -279,9 +279,9 @@ def ChatInterface():
                         ),
                         avatar_background_color=(
                             (
-                                solara.lab.theme.themes.dark.primary
+                                solara.lab.theme.themes.dark.accent
                                 if solara.lab.use_dark_effective()
-                                else (solara.lab.theme.themes.light.primary)
+                                else (solara.lab.theme.themes.light.accent)
                             )
                             if item[constants.CHAT_KEY_ROLE]
                             == constants.CHAT_KEY_VALUE_ASSISTANT
@@ -298,7 +298,8 @@ def ChatInterface():
                             solara.Markdown(
                                 md_text=":thinking: _Thinking of a response..._"
                             )
-                            if ask_tldrlc.pending
+                            if item[constants.CHAT_KEY_CONTENT]
+                            == constants.EMPTY_STRING
                             else solara.Markdown(
                                 md_text=f"{item[constants.CHAT_KEY_CONTENT]}"
                             )
@@ -322,6 +323,7 @@ def ChatInterface():
                             == constants.CHAT_KEY_VALUE_ASSISTANT
                             and item == sm.global_chat_messages.value[-1]
                             and not ask_tldrlc.pending
+                            and not submit_feedback.pending
                             and len(sm.global_chat_messages.value) > 1
                             and sm.global_settings_langfuse_enabled.value
                             and (
@@ -332,7 +334,6 @@ def ChatInterface():
                             with rv.ExpansionPanels():
                                 with rv.ExpansionPanel(
                                     disabled=submit_feedback.pending
-                                    or submit_feedback.finished
                                 ):
                                     with rv.ExpansionPanelHeader():
                                         solara.Markdown("🧐 _How did I do?_")
@@ -356,8 +357,12 @@ def ChatInterface():
                                             outlined=True,
                                             on_click=submit_feedback,
                                         )
-            # if ask_tldrlc.pending:
-            #     solara.Markdown(":thinking: _Thinking of a response..._")
+            if (
+                len(sm.global_chat_messages.value) > 0
+                and sm.global_chat_messages.value[-1][constants.CHAT_KEY_ROLE]
+                == constants.CHAT_KEY_VALUE_USER
+            ):
+                solara.Markdown(":construction: _Working on it..._")
             # if exported_chat_json.value:
             #     solara.Markdown(
             #         f"""
@@ -371,24 +376,41 @@ def ChatInterface():
                 label="Type your message here...",
                 style={"width": "100%"},
                 value=user_chat_input,
+                update_events=["keyup.enter"],
                 on_value=ask_tldrlc,
-                disabled=ask_tldrlc.pending,
+                disabled=(
+                    ask_tldrlc.pending
+                    or (
+                        len(sm.global_chat_messages.value) > 0
+                        and sm.global_chat_messages.value[-1][constants.CHAT_KEY_ROLE]
+                        == constants.CHAT_KEY_VALUE_USER
+                    )
+                ),
             )
             solara.Button(
                 label="Ask",
                 icon_name="mdi-send",
                 on_click=ask_tldrlc,
                 color="success",
-                disabled=ask_tldrlc.pending,
-                # outlined=True,
+                disabled=(
+                    ask_tldrlc.pending
+                    or (
+                        len(sm.global_chat_messages.value) > 0
+                        and sm.global_chat_messages.value[-1][constants.CHAT_KEY_ROLE]
+                        == constants.CHAT_KEY_VALUE_USER
+                    )
+                ),
             )
             # solara.Button(
             #     label="Clear chat",
             #     on_click=clear_chat_history,
             #     color="error",
             #     disabled=(
-            #         ask_tldrlc.pending
-            #         or len(global_state.global_chat_messages.value) == 0
+            #         (ask_tldrlc.pending or len(sm.global_chat_messages.value) == 0)
+            #         or (
+            #             len(sm.global_chat_messages.value) > 0
+            #             and sm.global_chat_messages.value[-1][constants.CHAT_KEY_ROLE]
+            #             == constants.CHAT_KEY_VALUE_USER
+            #         )
             #     ),
-            #     style={"display": "none"},
             # )

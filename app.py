@@ -161,9 +161,18 @@ def Page():
                     if (
                         sm.global_knowledge_graph_index.value is not None
                         and sm.global_semantic_search_index.value is not None
+                    ) and not (
+                        ingest_uic.ingest_webpage_data.pending
+                        or ingest_uic.ingest_pdfurl_data.pending
+                        or ingest_uic.ingest_wikipedia_data.pending
+                        or ingest_uic.ingest_arxiv_data.pending
+                        or ingest_uic.ingest_pubmed_data.pending
                     ):
                         solara.Markdown(
-                            "You can use the following index IDs to reload the knowledge graph and semantic search indices."
+                            """If you are storing external graph and indices storage, 
+                            you can use the following index IDs to reload the knowledge 
+                            graph and semantic search indices that correspond to the last 
+                            ingested data source."""
                         )
                         rv.Alert(
                             type="success",

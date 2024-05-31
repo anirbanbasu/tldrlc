@@ -71,7 +71,7 @@ def stream_wrapper(streaming_response):
 
 def clear_chat_history():
     """Clear the chat history."""
-    sm.global_chat_messages.value = []
+    sm.global_chat_messages.value.clear()
 
 
 def no_chat_engine_message():

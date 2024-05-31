@@ -567,7 +567,7 @@ async def load_existing_indices():
             initialisation_status = initialise_chat_engine()
             if initialisation_status:
                 sm.show_status_message(
-                    message=f"**Done** loading knowledge graph index _{existing_knowledge_graph_index.value}_ and semantic search index _{existing_vector_index.value}_ from storage. You can now chat with the AI.",
+                    message="**Done** loading knowledge graph index and semantic search index from storage. You can now chat with the AI.",
                     colour="success",
                 )
         else:

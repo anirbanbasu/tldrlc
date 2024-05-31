@@ -109,12 +109,6 @@ def LLMSettingsBasicComponent():
                 message="The model must be available on the selected Ollama server.",
                 on_value=sm.update_llm_settings,
             )
-    solara.InputText(
-        label="Embedding model",
-        value=f"{sm.global_settings__embedding_model.value} ({sm.global_settings__language_model_provider.value})",
-        message="This embedding model is automatically selected based on your choice of the language model provider.",
-        disabled=True,
-    )
 
 
 @solara.component
@@ -553,6 +547,12 @@ def GraphVisualisationSettingsComponent():
 @solara.component
 def AllSettingsCategorical():
     """Main settings page."""
+
+    solara.Warning(
+        label="""If you change any of the settings after you have ingested some data, 
+        you should re-ingest the same data again to reflect the changes.""",
+        dense=True,
+    )
 
     with rv.ExpansionPanels(popout=True, hover=True, dense=True):
         with rv.ExpansionPanel():

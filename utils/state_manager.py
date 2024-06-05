@@ -341,11 +341,14 @@ def update_llm_settings(callback_data: Any = None):
             global_settings__llm_provider_notice.value = "Cohere is being used as the language model provider. Ensure that you have set the Cohere API key correctly from the Settings page."
         case constants.LLM_PROVIDER_OPENAI:
             Settings.llm = OpenAI(
+                api_key=global_settings__openai_api_key.value,
                 model=global_settings__openai_model.value,
                 temperature=global_settings__llm_temperature.value,
                 system_prompt=global_settings__llm_system_message.value,
             )
-            Settings.embed_model = OpenAIEmbedding()
+            Settings.embed_model = OpenAIEmbedding(
+                api_key=global_settings__openai_api_key.value,
+            )
             global_settings__llm_provider_notice.value = "Open AI is being used as the language model provider. Ensure that you have set the Open AI API key correctly from the Settings page."
         case constants.LLM_PROVIDER_LLAMAFILE:
             Settings.llm = Llamafile(

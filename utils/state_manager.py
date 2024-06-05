@@ -24,7 +24,7 @@ import logging
 
 from llama_index.core.chat_engine.types import BaseChatEngine
 from llama_index.core import StorageContext
-from llama_index.core import KnowledgeGraphIndex, VectorStoreIndex
+from llama_index.core import VectorStoreIndex, PropertyGraphIndex
 from llama_index.core.storage.chat_store import BaseChatStore
 from llama_index.core.memory import ChatMemoryBuffer
 
@@ -45,8 +45,8 @@ from llama_index.storage.kvstore.redis import RedisKVStore
 
 # See: https://github.com/run-llama/llama_index/issues/10731#issuecomment-1946450169
 from llama_index.storage.kvstore.redis import RedisKVStore as RedisCache
-from llama_index.core.graph_stores.simple import SimpleGraphStore
-from llama_index.graph_stores.neo4j import Neo4jGraphStore
+from llama_index.core.graph_stores.simple_labelled import SimplePropertyGraphStore
+from llama_index.graph_stores.neo4j import Neo4jPropertyGraphStore
 from llama_index.core import Settings
 from llama_index.core.callbacks import CallbackManager
 from llama_index.embeddings.openai import OpenAIEmbedding
@@ -215,12 +215,39 @@ class MessageDict(TypedDict):
     llm_model_name: str = None
 
 
-global_knowledge_graph_index: solara.Reactive[KnowledgeGraphIndex] = solara.reactive(
+global_knowledge_graph_index: solara.Reactive[PropertyGraphIndex] = solara.reactive(
     None
 )
 global_semantic_search_index: solara.Reactive[VectorStoreIndex] = solara.reactive(None)
 global_chat_engine: solara.Reactive[BaseChatEngine] = solara.reactive(None)
 global_chat_messages: solara.Reactive[List[MessageDict]] = solara.reactive([])
+
+
+# Looking at the provided code, it seems like you're repeating the same pattern of setting a global
+# setting's value to the corresponding environment variable or a default value. This could be simplified
+# by creating a helper function that encapsulates this pattern. (GitHub Copilot suggestion.)
+
+# def set_global_setting(setting: solara.Reactive, env_key: str, default_value: str, type_cast=str):
+#     """
+#     Sets a global setting's value to the corresponding environment variable or a default value.
+
+#     Args:
+#         setting (solara.Reactive variable): The global setting to set.
+#         env_key (str): The key of the environment variable.
+#         default_value (str): The default value to use if the environment variable is not set.
+#         type_cast (type): The type to cast the environment variable value to. Defaults to str.
+#     """
+#     setting.value = type_cast(os.getenv(env_key, default_value))
+
+# Usage
+# set_global_setting(global_settings__openai_api_key, constants.ENV_KEY_OPENAI_API_KEY, None)
+# set_global_setting(global_settings__llamafile_url, constants.ENV_KEY_LLAMAFILE_URL, constants.DEFAULT_SETTING_LLAMAFILE_URL)
+# set_global_setting(global_settings__ollama_url, constants.ENV_KEY_OLLAMA_URL, constants.DEFAULT_SETTING_OLLAMA_URL)
+# set_global_setting(global_settings__ollama_model, constants.ENV_KEY_OLLAMA_MODEL, constants.DEFAULT_SETTING_OLLAMA_MODEL)
+# set_global_setting(global_settings__llm_temperature, constants.ENV_KEY_LLM_TEMPERATURE, constants.DEFAULT_SETTING_LLM_TEMPERATURE, float)
+# set_global_setting(global_settings__llm_request_timeout, constants.ENV_KEY_LLM_REQUEST_TIMEOUT, constants.DEFAULT_SETTING_LLM_REQUEST_TIMEOUT, int)
+# set_global_setting(global_settings__llm_system_message, constants.ENV_KEY_LLM_SYSTEM_MESSAGE, constants.DEFAULT_SETTING_LLM_SYSTEM_MESSAGE)
+# set_global_setting(global_settings__data_ingestion_chunk_size, constants.ENV_KEY_DI_CHUNK_SIZE, constants.DEFAULT_SETTING_DI_CHUNK_SIZE, int)
 
 
 def md5_hash(some_string):
@@ -361,10 +388,10 @@ def update_chatbot_settings(callback_data: Any = None):
         )
 
 
-def update_graph_storage_context(gs: Neo4jGraphStore = None):
+def update_graph_storage_context(gs: Neo4jPropertyGraphStore = None):
     if not global_settings__neo4j_disable.value:
         if gs is None:
-            gs = Neo4jGraphStore(
+            gs = Neo4jPropertyGraphStore(
                 username=global_settings__neo4j_username.value,
                 password=global_settings__neo4j_password.value,
                 url=global_settings__neo4j_url.value,
@@ -372,17 +399,19 @@ def update_graph_storage_context(gs: Neo4jGraphStore = None):
             )
         if global_llamaindex_storage_context.value is None:
             global_llamaindex_storage_context.value = StorageContext.from_defaults(
-                graph_store=gs
+                property_graph_store=gs
             )
         else:
-            global_llamaindex_storage_context.value.graph_store = gs
+            global_llamaindex_storage_context.value.property_graph_store = gs
     else:
         if global_llamaindex_storage_context.value is None:
             global_llamaindex_storage_context.value = StorageContext.from_defaults(
-                graph_store=SimpleGraphStore()
+                property_graph_store=SimplePropertyGraphStore()
             )
         else:
-            global_llamaindex_storage_context.value.graph_store = SimpleGraphStore()
+            global_llamaindex_storage_context.value.property_graph_store = (
+                SimplePropertyGraphStore()
+            )
 
 
 def update_index_documents_vector_storage_context():

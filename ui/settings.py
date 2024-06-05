@@ -28,7 +28,7 @@ import solara.tasks
 import utils.constants as constants
 import utils.state_manager as sm
 
-from llama_index.graph_stores.neo4j import Neo4jGraphStore
+from llama_index.graph_stores.neo4j import Neo4jPropertyGraphStore
 
 
 logger = logging.getLogger(__name__)
@@ -363,7 +363,7 @@ def GraphDBSettingsComponent():
         nonlocal status
         if not sm.global_settings__neo4j_disable.value:
             try:
-                gs = Neo4jGraphStore(
+                gs = Neo4jPropertyGraphStore(
                     username=sm.global_settings__neo4j_username.value,
                     password=sm.global_settings__neo4j_password.value,
                     url=sm.global_settings__neo4j_url.value,

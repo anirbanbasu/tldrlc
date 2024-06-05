@@ -30,7 +30,8 @@ from llama_index.readers.papers import ArxivReader, PubmedReader
 from llama_index.readers.file import PyMuPDFReader
 
 from llama_index_client import Document
-from llama_index.core import KnowledgeGraphIndex, VectorStoreIndex
+from llama_index.core import VectorStoreIndex, PropertyGraphIndex
+from llama_index.core.indices.property_graph import SimpleLLMPathExtractor
 from llama_index.core import load_index_from_storage
 from llama_index.core import Settings
 from llama_index.core.node_parser import SentenceSplitter
@@ -40,19 +41,14 @@ from llama_index.core.extractors import (
     KeywordExtractor,
     QuestionsAnsweredExtractor,
 )
-from llama_index.core.retrievers import KGTableRetriever, VectorIndexRetriever
+from llama_index.core.retrievers import VectorIndexRetriever
 from llama_index.core import get_response_synthesizer
 from llama_index.core.query_engine import RetrieverQueryEngine
 from llama_index.core.chat_engine import ContextChatEngine
 from llama_index.core.schema import TransformComponent
 from llama_index.core.ingestion import IngestionPipeline, IngestionCache
 from llama_index.postprocessor.cohere_rerank import CohereRerank
-from llama_index.core.postprocessor import (
-    LLMRerank,
-    # SentenceTransformerRerank,
-    # SimilarityPostprocessor,
-    # LongContextReorder
-)
+from llama_index.core.postprocessor import LLMRerank
 
 
 import solara
@@ -146,14 +142,15 @@ def initialise_chat_engine() -> bool:
         sm.show_status_message(
             message=f"**Initialising chat engine** from index using the _{sm.global_settings__index_chat_mode.value}_ chat mode."
         )
-        kg_retriever = KGTableRetriever(
-            index=sm.global_knowledge_graph_index.value,
-            embed_model=Settings.embed_model,
-            retriever_mode="hybrid",
-            graph_store_query_depth=2,
-            similarity_top_k=2,
-            verbose=True,
-        )
+        # kg_retriever = KGTableRetriever(
+        #     index=sm.global_knowledge_graph_index.value,
+        #     embed_model=Settings.embed_model,
+        #     retriever_mode="hybrid",
+        #     graph_store_query_depth=2,
+        #     similarity_top_k=2,
+        #     verbose=True,
+        # )
+        kg_retriever = sm.global_knowledge_graph_index.value.as_retriever()
         vector_retriever = VectorIndexRetriever(
             index=sm.global_semantic_search_index.value,
             embed_model=Settings.embed_model,
@@ -245,13 +242,28 @@ def build_index_pipeline() -> bool:
         message=f"**Building knowledge graph index** from {len(chunk_nodes)} chunks extracted from {len(ingested_documents.value)} document(s).",
         timeout=0,
     )
-    sm.global_knowledge_graph_index.value = KnowledgeGraphIndex(
+    # sm.global_knowledge_graph_index.value = KnowledgeGraphIndex(
+    #     nodes=chunk_nodes,
+    #     llm=Settings.llm,
+    #     embed_model=Settings.embed_model,
+    #     storage_context=sm.global_llamaindex_storage_context.value,
+    #     max_triplets_per_chunk=sm.global_settings__index_max_triplets_per_chunk.value,
+    #     include_embeddings=sm.global_settings__index_include_embeddings.value,
+    #     show_progress=True,
+    # )
+    kg_extractors = [
+        SimpleLLMPathExtractor(
+            llm=Settings.llm,
+            max_paths_per_chunk=sm.global_settings__index_max_triplets_per_chunk.value,
+        )
+    ]
+    sm.global_knowledge_graph_index.value = PropertyGraphIndex(
         nodes=chunk_nodes,
         llm=Settings.llm,
+        kg_extractors=kg_extractors,
         embed_model=Settings.embed_model,
+        embed_kg_nodes=True,
         storage_context=sm.global_llamaindex_storage_context.value,
-        max_triplets_per_chunk=sm.global_settings__index_max_triplets_per_chunk.value,
-        include_embeddings=sm.global_settings__index_include_embeddings.value,
         show_progress=True,
     )
     sm.global_knowledge_graph_index.value.storage_context.docstore.add_documents(
@@ -275,36 +287,36 @@ def build_index_pipeline() -> bool:
     return True
 
 
-def build_index() -> bool:
-    """Build the knowledge graph index from the documents. DEPRECATED: Use build_index_pipeline() instead."""
-    # Try to output some kind of progress bar state?
-    global ingested_documents
-    chunk_parser = SentenceSplitter.from_defaults(
-        chunk_size=Settings.chunk_size,
-        chunk_overlap=Settings.chunk_overlap,
-        include_metadata=True,
-        include_prev_next_rel=True,
-    )
-    chunk_nodes = chunk_parser.get_nodes_from_documents(
-        documents=ingested_documents.value, show_progress=True
-    )
-    sm.show_status_message(
-        message=f"**Building index** from {len(chunk_nodes)} extracted chunks.",
-        timeout=0,
-    )
-    sm.global_knowledge_graph_index.value = KnowledgeGraphIndex(
-        nodes=chunk_nodes,
-        llm=Settings.llm,
-        embed_model=Settings.embed_model,
-        storage_context=sm.global_llamaindex_storage_context.value,
-        max_triplets_per_chunk=sm.global_settings__index_max_triplets_per_chunk.value,
-        include_embeddings=sm.global_settings__index_include_embeddings.value,
-        show_progress=True,
-    )
-    sm.global_knowledge_graph_index.value.storage_context.docstore.add_documents(
-        chunk_nodes
-    )
-    return True
+# def build_index() -> bool:
+#     """Build the knowledge graph index from the documents. DEPRECATED: Use build_index_pipeline() instead."""
+#     # Try to output some kind of progress bar state?
+#     global ingested_documents
+#     chunk_parser = SentenceSplitter.from_defaults(
+#         chunk_size=Settings.chunk_size,
+#         chunk_overlap=Settings.chunk_overlap,
+#         include_metadata=True,
+#         include_prev_next_rel=True,
+#     )
+#     chunk_nodes = chunk_parser.get_nodes_from_documents(
+#         documents=ingested_documents.value, show_progress=True
+#     )
+#     sm.show_status_message(
+#         message=f"**Building index** from {len(chunk_nodes)} extracted chunks.",
+#         timeout=0,
+#     )
+#     sm.global_knowledge_graph_index.value = KnowledgeGraphIndex(
+#         nodes=chunk_nodes,
+#         llm=Settings.llm,
+#         embed_model=Settings.embed_model,
+#         storage_context=sm.global_llamaindex_storage_context.value,
+#         max_triplets_per_chunk=sm.global_settings__index_max_triplets_per_chunk.value,
+#         include_embeddings=sm.global_settings__index_include_embeddings.value,
+#         show_progress=True,
+#     )
+#     sm.global_knowledge_graph_index.value.storage_context.docstore.add_documents(
+#         chunk_nodes
+#     )
+#     return True
 
 
 @task(prefer_threaded=True)

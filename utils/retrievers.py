@@ -21,11 +21,7 @@ from llama_index.core import QueryBundle
 from llama_index.core.schema import NodeWithScore
 
 # Retrievers
-from llama_index.core.retrievers import (
-    BaseRetriever,
-    VectorIndexRetriever,
-    KGTableRetriever,
-)
+from llama_index.core.retrievers import BaseRetriever
 
 from typing import List
 
@@ -37,8 +33,8 @@ class VectorKnowledgeGraphRetriever(BaseRetriever):
 
     def __init__(
         self,
-        vector_retriever: VectorIndexRetriever,
-        knowledge_graph_retriever: KGTableRetriever,
+        vector_retriever: BaseRetriever,
+        knowledge_graph_retriever: BaseRetriever,
         mode: str = constants.BOOLEAN_OR,
     ) -> None:
         """Init params."""

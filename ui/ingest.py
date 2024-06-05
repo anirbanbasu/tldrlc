@@ -151,13 +151,16 @@ def initialise_chat_engine() -> bool:
             message=f"**Initialising chat engine** from index using the _{sm.global_settings__index_chat_mode.value}_ chat mode."
         )
         sub_retrievers = [
-            VectorContextRetriever(
-                sm.global_knowledge_graph_index.value.property_graph_store
-            ),
             LLMSynonymRetriever(
-                sm.global_knowledge_graph_index.value.property_graph_store
+                graph_store=sm.global_knowledge_graph_index.value.property_graph_store
             ),
         ]
+        if not sm.global_settings__neo4j_disable.value:
+            sub_retrievers.append(
+                VectorContextRetriever(
+                    graph_store=sm.global_knowledge_graph_index.value.property_graph_store
+                )
+            )
         kg_retriever = PGRetriever(sub_retrievers=sub_retrievers)
         # The vector context retriever can make the vector index retriever redundant, in the future.
         vector_retriever = VectorIndexRetriever(
@@ -272,7 +275,7 @@ def build_index_pipeline() -> bool:
         llm=Settings.llm,
         kg_extractors=kg_extractors,
         embed_model=Settings.embed_model,
-        embed_kg_nodes=True,
+        embed_kg_nodes=True if not sm.global_settings__neo4j_disable.value else False,
         storage_context=sm.global_llamaindex_storage_context.value,
         show_progress=True,
     )

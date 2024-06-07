@@ -1,0 +1,302 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Introduction - Too Long, Didn&#x27;t Read, Let&#x27;s Chat (TLDRLC)</title>
+
+
+        <!-- Custom HTML head -->
+        
+        <meta name="description" content="Too Long Didn&#x27;t Read Let&#x27;s Chat (TLDRLC) is a chatbot prototype that allows users to chat with a large language model (LLM) about various data sources. This chatbot utilises retrieval augmented generation (RAG) with knowledge graph and semantic search.">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon.svg">
+        <link rel="shortcut icon" href="favicon.png">
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        <link rel="stylesheet" href="css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="highlight.css">
+        <link rel="stylesheet" href="tomorrow-night.css">
+        <link rel="stylesheet" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+        <!-- MathJax -->
+        <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    </head>
+    <body class="sidebar-visible no-js">
+    <div id="body-container">
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('light')
+            html.classList.add(theme);
+            var body = document.querySelector('body');
+            body.classList.remove('no-js')
+            body.classList.add('js');
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var body = document.querySelector('body');
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            body.classList.remove('sidebar-visible');
+            body.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item affix "><a href="../../index.html" class="active">Introduction</a></li><li class="chapter-item affix "><a href="../../LICENSE.html">License</a></li><li class="chapter-item affix "><div>Draft Chapter</div></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <!-- Track and set sidebar scroll position -->
+        <script>
+            var sidebarScrollbox = document.querySelector('#sidebar .sidebar-scrollbox');
+            sidebarScrollbox.addEventListener('click', function(e) {
+                if (e.target.tagName === 'A') {
+                    sessionStorage.setItem('sidebar-scroll', sidebarScrollbox.scrollTop);
+                }
+            }, { passive: true });
+            var sidebarScrollTop = sessionStorage.getItem('sidebar-scroll');
+            sessionStorage.removeItem('sidebar-scroll');
+            if (sidebarScrollTop) {
+                // preserve sidebar scroll position when navigating via links within sidebar
+                sidebarScrollbox.scrollTop = sidebarScrollTop;
+            } else {
+                // scroll sidebar to current active section when navigating via "next/previous chapter" buttons
+                var activeSection = document.querySelector('#sidebar .active');
+                if (activeSection) {
+                    activeSection.scrollIntoView({ block: 'center' });
+                }
+            }
+        </script>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Too Long, Didn&#x27;t Read, Let&#x27;s Chat (TLDRLC)</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/anirbanbasu/tldrlc" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <p><a href="https://github.com/anirbanbasu/tldrlc-internal/actions/workflows/python-app.yml"><img src="https://github.com/anirbanbasu/tldrlc-internal/actions/workflows/python-app.yml/badge.svg" alt="Python lint" /></a></p>
+<h1 id="too-long-didnt-read-lets-chat-tldrlc"><a class="header" href="#too-long-didnt-read-lets-chat-tldrlc">Too Long, Didn’t Read, Let’s Chat (TLDRLC)</a></h1>
+<p>Too Long Didn’t Read Let’s Chat (TLDRLC) is a chatbot prototype that allows users to chat with a <em>large language model (LLM)</em> about various data sources. This chatbot utilises <em>retrieval augmented generation (RAG)</em> with <em>knowledge graph</em> and <em>semantic search</em>.</p>
+<p>TLDRLC is an experimental software. It is not associated with any, and should not be interpreted as a, reliable chatbot service. The rationale behind this project is experimentation with retrieval augmented generation. The implementation is based on concepts from publicly available information, including tutorials and courses, such as <a href="https://www.deeplearning.ai/short-courses/knowledge-graphs-rag/">DeepLearning.ai: Knowledge Graphs for RAG</a> and <a href="https://www.deeplearning.ai/courses/building-evaluating-advanced-rag/">DeepLearning.ai: Building and Evaluating Advanced RAG</a> to name a few.</p>
+<h2 id="installation"><a class="header" href="#installation">Installation</a></h2>
+<p>If you want to run this app in a Docker container then you can skip the installation of Python dependencies below. The process of running the app with Docker is described below in the usage section. You may still need to setup the language model provider, and the storages for documents, indices and graphs.</p>
+<p>In addition to installation, you can configure the application using environment variables. Some settings can be modified through the app’s web interface. All settings can be modified by using a local <code>.env</code> file or as environment variables. However, settings that can be modified using the app’s Settings page are not stored as environment variables, which means settings in one browser session will be independent of the settings in another browser session even if both are initialised with the settings from the environment variables. A comprehensive list of the supported environment variables is available in the <code>.env.template</code> file in this repository, which can serve as a starting point.</p>
+<h3 id="python-dependencies"><a class="header" href="#python-dependencies">Python dependencies</a></h3>
+<p>You will need Python installed on your computer. The code in this repository has been tested on Python 3.12.0. Refrain from using the system Python. Use a Python version and virtual environment manager such as <a href="https://github.com/pyenv/pyenv">pyenv</a>. Create a new Python virtual environment for Python 3.12.0 or above. You can install all the dependencies for this application in your virtual environment by running the following.</p>
+<pre><code>pip install --upgrade pip
+pip install -r requirements.txt
+</code></pre>
+<h4 id="optional-uninstall-all-dependencies-to-start-afresh"><a class="header" href="#optional-uninstall-all-dependencies-to-start-afresh">Optional: Uninstall all dependencies to start afresh</a></h4>
+<p>If necessary, you can uninstall everything previously installed by <code>pip</code> (in a virtual environment) by running the following.</p>
+<pre><code>pip freeze | xargs pip uninstall -y
+</code></pre>
+<h4 id="upgrading-python-dependencies"><a class="header" href="#upgrading-python-dependencies">Upgrading Python dependencies</a></h4>
+<p>The currently installed packages can be upgraded and the <code>requirements.txt</code> updated accordingly by running the following.</p>
+<pre><code>sed 's/==.*$//' requirements.txt | xargs pip install --upgrade
+pip-autoremove -f &gt; requirements.txt
+</code></pre>
+<h3 id="language-model-providers-documents-index-and-graph-storage"><a class="header" href="#language-model-providers-documents-index-and-graph-storage">Language model providers, documents, index and graph storage</a></h3>
+<h4 id="supported-language-model-providers"><a class="header" href="#supported-language-model-providers">Supported language model providers</a></h4>
+<p>You can specify the language model provider to use by using the environment variable <code>LLM_PROVIDER</code>, which defaults to <code>Ollama</code>, if not specified. The supported language model providers are:</p>
+<ol>
+<li>Cohere.</li>
+<li>Ollama.</li>
+<li>Open AI.</li>
+</ol>
+<p>If using <a href="https://ollama.com/">Ollama</a>, you will also need to install it or, point the chatbot to a remotely hosted Ollama server. You also need to pull the Ollama model that you specify with <code>OLLAMA_MODEL</code> environment variable using <code>ollama pull &lt;model-name&gt;</code> (replace <code>&lt;model-name&gt;</code> with the actual model that you want to use) on your Ollama server. Check the <a href="https://ollama.com/library">available Ollama models</a>.</p>
+<p>Open AI can be used by specifying an <code>OPENAI_API_KEY</code>, an <code>OPENAI_MODEL</code>, and by choosing <code>Open AI</code> as the <code>LLM_PROVIDER</code>. Follow <a href="https://platform.openai.com/account/api-keys">this link</a> to get an Open AI API key. Similarly, Cohere can be used by specifying a <code>COHERE_API_KEY</code>, a <code>COHERE_MODEL</code> (which defaults to <code>command-r-plus</code>), and by choosing <code>Cohere</code> as the <code>LLM_PROVIDER</code>. Follow <a href="https://cohere.com/pricing">this link</a> to obtain a Cohere API key.</p>
+<p>See the settings in the <code>.env.template</code> file customisation of the LLM settings.</p>
+<h4 id="documents-and-index-storage"><a class="header" href="#documents-and-index-storage">Documents and index storage</a></h4>
+<p>A <a href="https://redis.io/docs/install/install-stack/">Redis stack installation</a> is required to store the parsed document chunks and the index, which can be reloaded without having to rebuild the index from the sources. Although the default settings are okay, refer to the <a href="https://redis.io/docs/management/persistence/">Redis persistence configuration</a>, if necessary. Alternative to a local Redis installation, you can also opt for a remote Redis installation such as one on <a href="https://render.com/">Render</a>. Depending on your hosting plan, various limits will apply on such cloud-based managed Redis installations.</p>
+<h4 id="graph-database"><a class="header" href="#graph-database">Graph database</a></h4>
+<p>Similarly, you will need <a href="https://neo4j.com/">Neo4j graph database</a>. You can either install it locally or use a the <a href="https://neo4j.com/cloud/platform/aura-graph-database/">Neo4j Aura DB</a>, which is a cloud-hosted version of Neo4j.</p>
+<p><em>Note that unless you specify <code>NEO4J_DISABLE = "True"</code> to disable Neo4J and use an in-memory graph database, the Neo4J server must be accessible using the specified connection credentials. Otherwise, the application will display an error at the time of starting up.</em></p>
+<h3 id="performance-evaluation-using-langfuse"><a class="header" href="#performance-evaluation-using-langfuse">Performance evaluation using Langfuse</a></h3>
+<p>If you wish to use <a href="https://langfuse.com/">Langfuse</a> for performance evaluation then set <code>EVAL_USE_LANGFUSE = "True"</code> in the <code>.env</code> file followed by <code>LANGFUSE_PUBLIC_KEY</code>, <code>LANGFUSE_PRIVATE_KEY</code>, <code>LANGFUSE_URL</code>. You can set these up by running Langfuse self-hosted or by signing up and signing in to <a href="https://cloud.langfuse.com/">the Langfuse cloud</a>.</p>
+<h2 id="usage"><a class="header" href="#usage">Usage</a></h2>
+<h3 id="on-your-computer"><a class="header" href="#on-your-computer">On your computer</a></h3>
+<p>Once you have installed the dependencies mentioned above in your Python virtual environment, to run the chatbot, execute <code>solara run app.py</code>. It will automatically open a browser (unless you have a headless terminal) to the chatbot application. An alternative way of running the app is by executing the script <code>run_starlette.sh</code>, which will load the app using the <a href="https://www.starlette.io/">Starlette framework</a> on the Asynchronous Server Gateway Interface (ASGI) server, <a href="https://www.uvicorn.org/">uvicorn</a>.</p>
+<h3 id="docker"><a class="header" href="#docker">Docker</a></h3>
+<p>You can run the app in a Docker container. By default, the app inside the Docker container will not use persistable index storage, document storage or graph storage. To run the app in a Docker container, you have to build its image (which we name as <code>tldrlc</code> although you can choose any other name) and run an instance (which we name as <code>tldrlc-container</code> but you can also pick a name of your choice) of that image, as follows.</p>
+<pre><code>docker build -f local.dockerfile -t tldrlc .
+docker create -p 8765:8765/tcp --name tldrlc-container tldrlc
+docker container start tldrlc-container
+</code></pre>
+<p>Following this, the app will be accessible on your Docker host, for example as <a href="http://localhost:8765">http://localhost:8765</a> – assuming that nothing else on host is blocking port 8765 when the container starts.</p>
+<!-- If you want to change the settings of the app itself inside the container, login to the container as `root`. You can do this by running `docker exec -it tldrlc-container bash`. Once, you have the shell access in the container, edit the file `/app/.env` using the `nano` editor that is installed for convenience. For example, you can change the default behaviour of the containerised app to use your preferred remote graph, index and document storage. Then, restart the _same_ container, by running `docker container restart tldrlc-container`. Remember that these changes _will not_ propagate to any new container that you spin out of the image. -->
+<p>The Docker container has to depend on external LLM provider, graph database, document and index storage. If any of these, such as <code>Ollama</code>, is running on the Docker host then you should use the host name for the service as <code>host.docker.internal</code> or <code>gateway.docker.internal</code>. See <a href="https://docs.docker.com/desktop/networking/">the networking documentation of Docker desktop</a> for details.</p>
+<h3 id="cloud-deployment"><a class="header" href="#cloud-deployment">Cloud deployment</a></h3>
+<p>There is a public deployment of this app available through a Hugging Face Spaces at <a href="https://huggingface.co/spaces/xtremebytes/TLDRLC">https://huggingface.co/spaces/xtremebytes/TLDRLC</a>. Note that this deployment is experimental and bugs are quite likely. There may be additional problems due to any restrictions on the Hugging Face Spaces infrastructure, which will not manifest in a local deployment.</p>
+<p>For a cloud deployment, you have to use Open AI or Cohere. By default, graph, index and documents will be stored in memory with no disk persistence. If you want persistence with the deployment with a cloud deployment, you must use <a href="https://neo4j.com/cloud/platform/aura-graph-database/">Neo4j Aura DB</a> and a remotely hosted Redis (e.g., <a href="https://docs.render.com/redis">Redis on Render</a>). Alternatively, you can use local or on-premises hosted Ollama, Neo4j and Redis by exposing those services with TCP (or, TLS) tunnels publicly through <a href="https://ngrok.com/">ngrok</a>.</p>
+<p><strong>Note</strong> that for cloud deployment(s) mentioned above, unless you create your separate cloud deployment by yourself, LangFuse evaluation is enabled by default and cannot be turned off. This is meant for evaluation purposes of this project. Hence, all information about your interactions with the chatbot will be available to the maintainer(s) of this project. <em>For local, Docker or cloud deployments that you create, LangFuse is <strong>not</strong> enabled by default. Even when enabled, by yourself, LangFuse traces will be available to you, and not the maintainer(s) of this project</em>.</p>
+<h2 id="support"><a class="header" href="#support">Support</a></h2>
+<p>Use the issue tracker to report bugs or request feature enhancements. You can also use the discussions to discuss matters other than bug reports and feature requests.</p>
+<h2 id="contributing"><a class="header" href="#contributing">Contributing</a></h2>
+<p>You can contribute fixes or new ideas using pull requests.</p>
+<h2 id="license"><a class="header" href="#license">License</a></h2>
+<p>Apache License, Version 2.0, January 2004. See: <a href="http://www.apache.org/licenses/">http://www.apache.org/licenses/</a>.</p>
+<h2 id="project-status"><a class="header" href="#project-status">Project status</a></h2>
+<p>Actively maintained early stage prototype for experimentation only.</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+
+                            <a rel="next prefetch" href="../../LICENSE.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+
+                    <a rel="next prefetch" href="../../LICENSE.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+
+        <script src="clipboard.min.js"></script>
+        <script src="highlight.js"></script>
+        <script src="book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>

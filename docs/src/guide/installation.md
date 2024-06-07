@@ -1,0 +1,5 @@
+# Installation
+
+If you want to run this app in a Docker container then you can skip the installation of Python dependencies below. The process of running the app with Docker is described below in the usage section. You may still need to setup the language model provider, and the storages for documents, indices and graphs.
+
+In addition to installation, you can configure the application using environment variables. Some settings can be modified through the app's web interface. All settings can be modified by using a local `.env` file or as environment variables. However, settings that can be modified using the app's Settings page are not stored as environment variables, which means settings in one browser session will be independent of the settings in another browser session even if both are initialised with the settings from the environment variables. A comprehensive list of the supported environment variables is available in the `.env.template` file in this repository, which can serve as a starting point.

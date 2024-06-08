@@ -4,5 +4,6 @@ You can run the app in a Docker container. By default, the app inside the Docker
 ```
 docker build -f local.dockerfile -t tldrlc .
 docker create -p 8765:8765/tcp --name tldrlc-container tldrlc
-docker container start tldrlc-container
 ```
+
+<!-- If you want to change the settings of the app itself inside the container, login to the container as `root`. You can do this by running `docker exec -it tldrlc-container bash`. Once, you have the shell access in the container, edit the file `/app/.env` using the `nano` editor that is installed for convenience. For example, you can change the default behaviour of the containerised app to use your preferred remote graph, index and document storage. Then, restart the _same_ container, by running `docker container restart tldrlc-container`. Remember that these changes _will not_ propagate to any new container that you spin out of the image. -->

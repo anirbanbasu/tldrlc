@@ -1,4 +1,4 @@
-[![Python lint](https://github.com/anirbanbasu/tldrlc/actions/workflows/python-app.yml/badge.svg)](https://github.com/anirbanbasu/tldrlc/actions/workflows/python-app.yml)
+[![Python lint](https://github.com/anirbanbasu/tldrlc/actions/workflows/python-app.yml/badge.svg)](https://github.com/anirbanbasu/tldrlc/actions/workflows/python-app.yml) [![CodeQL](https://github.com/anirbanbasu/tldrlc/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/anirbanbasu/tldrlc/actions/workflows/github-code-scanning/codeql) [![Deploy mdBook site to Pages](https://github.com/anirbanbasu/tldrlc/actions/workflows/mdbook.yml/badge.svg)](https://github.com/anirbanbasu/tldrlc/actions/workflows/mdbook.yml)
 
 # Too Long, Didn't Read, Let's Chat (TLDRLC)
 

@@ -143,7 +143,7 @@ def Page():
                         from the next step on the left sidebar_.
                         """,
                     )
-                    settings_uic.LLMSettingsBasicComponent()
+                    settings_uic.BasicSettingsComponent()
                     with rv.CardActions():
                         solara.Button(
                             constants.EMPTY_STRING,

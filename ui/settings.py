@@ -50,8 +50,11 @@ def update_llm_system_message(callback_data: Any = None):
 
 
 @solara.component
-def LLMSettingsBasicComponent():
-    """Component for the basic language model settings."""
+def BasicSettingsComponent():
+    """Component for the basic settings."""
+
+    if sm.global_settings__llm_provider_notice.value is not constants.EMPTY_STRING:
+        solara.Info(icon=True, label=sm.global_settings__llm_provider_notice.value)
 
     solara.Select(
         label="Language model provider",
@@ -390,6 +393,8 @@ def GraphDBSettingsComponent():
             """,
         elevation=0,
     ):
+        if status.value is not None:
+            solara.display(status.value)
         solara.Checkbox(
             label="Disable Neo4j and use in-memory storage",
             value=sm.global_settings__neo4j_disable,
@@ -421,9 +426,6 @@ def GraphDBSettingsComponent():
             disabled=sm.global_settings__neo4j_disable.value,
             on_value=test_graphdb_connection,
         )
-
-    if status.value is not None:
-        solara.display(status.value)
 
 
 @solara.component
@@ -469,6 +471,8 @@ def DocumentsIndexVectorStorageSettingsComponent():
             """,
         elevation=0,
     ):
+        if status.value is not None:
+            solara.display(status.value)
         solara.Checkbox(
             label="Disable Redis",
             value=sm.global_settings__redis_disable,
@@ -492,11 +496,6 @@ def DocumentsIndexVectorStorageSettingsComponent():
             disabled=sm.global_settings__redis_disable.value,
             on_value=test_redis_connection,
         )
-
-    if status.value is not None:
-        solara.display(status.value)
-
-    # update_index_documents_storage_context()
 
 
 @solara.component

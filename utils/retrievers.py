@@ -29,7 +29,7 @@ import utils.constants as constants
 
 
 class VectorKnowledgeGraphRetriever(BaseRetriever):
-    """Custom retriever that performs both semantic search and knowledge graph search."""
+    """Custom retriever that retrieves from a semantic search (vector) index and a knowledge graph index."""
 
     def __init__(
         self,
@@ -37,15 +37,18 @@ class VectorKnowledgeGraphRetriever(BaseRetriever):
         knowledge_graph_retriever: BaseRetriever,
         mode: str = constants.BOOLEAN_OR,
     ) -> None:
-        """Init params."""
+        """Initialisation parameters."""
 
         if vector_retriever is None:
-            raise ValueError("A valid vector index retriever must be specified.")
+            raise ValueError(
+                "A valid semantic search (vector) index retriever must be specified."
+            )
         if knowledge_graph_retriever is None:
             raise ValueError("A valid knowledge graph retriever must be specified.")
         if mode not in (constants.BOOLEAN_AND, constants.BOOLEAN_OR):
             raise ValueError(
-                f"Invalid retriever mode {mode}. It must be either {constants.BOOLEAN_AND} or {constants.BOOLEAN_OR}."
+                f"""Invalid retriever logical combination mode {mode}. 
+                It must be either {constants.BOOLEAN_AND} (intersection) or {constants.BOOLEAN_OR} (union)."""
             )
         self._vector_retriever = vector_retriever
         self._keyword_retriever = knowledge_graph_retriever
@@ -55,22 +58,26 @@ class VectorKnowledgeGraphRetriever(BaseRetriever):
     def _retrieve(self, query_bundle: QueryBundle) -> List[NodeWithScore]:
         """Retrieve nodes given query."""
 
+        # Retrieve nodes from both indices
         vector_nodes = self._vector_retriever.retrieve(query_bundle)
         knowledge_graph_nodes = self._keyword_retriever.retrieve(query_bundle)
 
         vector_ids = {n.node.node_id for n in vector_nodes}
         knowledge_graph_ids = {n.node.node_id for n in knowledge_graph_nodes}
 
+        # Create a combined dictionary of nodes with scores
         combined_dict = {n.node.node_id: n for n in vector_nodes}
         combined_dict.update({n.node.node_id: n for n in knowledge_graph_nodes})
 
+        # Perform set operation
         if self._mode == constants.BOOLEAN_AND:
             retrieve_ids = vector_ids.intersection(knowledge_graph_ids)
         elif self._mode == constants.BOOLEAN_OR:
             retrieve_ids = vector_ids.union(knowledge_graph_ids)
         else:
             raise ValueError(
-                f"Set operation is not defined for invalid retriever mode {self._mode}, which must be either {constants.BOOLEAN_AND} or {constants.BOOLEAN_OR}."
+                f"""Set operation is not defined for invalid retriever logical combination mode {self._mode}, 
+                which must be either {constants.BOOLEAN_AND} (intersection) or {constants.BOOLEAN_OR} (union)."""
             )
 
         retrieve_nodes = [combined_dict[rid] for rid in retrieve_ids]

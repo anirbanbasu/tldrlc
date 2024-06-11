@@ -1,3 +1,8 @@
+/* Remove the "This website runs on Solara" message. */
+.v-application--wrap > div:nth-child(2) > div:nth-child(2){
+    display: none !important;
+}
+
 .solara-autorouter-content {
     display: flex;
     flex-direction: column;

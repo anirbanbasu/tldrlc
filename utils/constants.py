@@ -198,12 +198,6 @@ DEFAULT_DATA_SOURCE_WIKIPEDIA_LANGUAGE_PREFIX = "en"
 UI_STATUS_CONTAINER_HEIGHT = "300"
 UI_CHAT_CONTAINER_HEIGHT = "400"
 
-UI_SOLARA_NOTICE_REMOVE = """
-        .v-application--wrap > div:nth-child(2) > div:nth-child(2){
-            display: none !important;
-        }
-        """
-
 MESSAGE_TLDRLC_WELCOME = """
         ### Too Long, Didn't Read, Let's Chat (TLDRLC)
 

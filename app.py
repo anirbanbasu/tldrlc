@@ -29,7 +29,9 @@ import ui.chat as chat_uic
 
 from pathlib import Path
 
+# CWD = Current Working Directory
 CWD = Path(__file__).parent
+# Load the external CSS file to be used as global styles for the page.
 extern_style = (CWD / "styles.css").read_text(encoding=constants.CHAR_ENCODING_UTF8)
 
 page_step: solara.Reactive[int] = solara.reactive(1)
@@ -37,12 +39,14 @@ page_step: solara.Reactive[int] = solara.reactive(1)
 
 @solara.component
 def CustomLayout(children: Any = []):
+    """Define a custom layout for the app."""
     sm.set_theme_colours()
+    # It is necessary to initialise the default settings before the page is rendered.
     sm.initialise_default_settings()
 
     with solara.AppLayout(
         children=children,
-        color=None,  # sm.corrective_background_colour.value,
+        color=None,
         navigation=True,
         sidebar_open=False,
     ) as app_layout:
@@ -70,12 +74,14 @@ def CustomLayout(children: Any = []):
 
 @solara.component
 def Page():
-    # Remove the "This website runs on Solara" message
-    solara.Style(constants.UI_SOLARA_NOTICE_REMOVE)
+    """Define the main page."""
+    # Apply the external CSS file as global styles for the page.
     solara.Style(extern_style)
 
+    # Numeric labels for the steps
     step_labels = [1, 2, 3, 4]
 
+    # Show all settings in the sidebar only if the user has passed the basic settings step.
     with solara.Sidebar():
         if page_step.value in step_labels[2:]:
             settings_uic.AllSettingsCategorical()
@@ -93,7 +99,7 @@ def Page():
                         case 1:
                             solara.Markdown("Information")
                         case 2:
-                            solara.Markdown("Language model (LLM)")
+                            solara.Markdown("Basic settings")
                         case 3:
                             solara.Markdown("Data")
                         case 4:
@@ -102,6 +108,7 @@ def Page():
                     rv.Divider()
         with rv.StepperItems():
             with rv.StepperContent(step=1):
+                # Show a welcome message and the EU AI Act transparency notice and get the user to agree to it.
                 with rv.Card(elevation=0):
                     solara.Markdown(constants.MESSAGE_TLDRLC_WELCOME)
                     solara.Markdown(
@@ -125,10 +132,11 @@ def Page():
                         on_click=lambda: page_step.set(2),
                     )
             with rv.StepperContent(step=2):
+                # Show the basic settings to get started.
                 with rv.Card(elevation=0):
                     solara.Markdown(
                         """
-                        ### Language model settings
+                        ### Basic settings
 
                         _You can configure other settings of the language model along 
                         with indexing and storage from the settings menu, which is available
@@ -149,6 +157,7 @@ def Page():
                             on_click=lambda: page_step.set(3),
                         )
             with rv.StepperContent(step=3):
+                # Show the data ingestion options, ingest data before proceeding to the chat interface.
                 with rv.Card(elevation=0):
                     solara.Markdown(
                         """
@@ -196,7 +205,7 @@ def Page():
                         )
                     with rv.CardActions():
                         solara.Button(
-                            "LLM",
+                            "Settings",
                             icon_name="mdi-cogs",
                             disabled=(
                                 ingest_uic.ingest_webpage_data.pending
@@ -223,6 +232,7 @@ def Page():
                             on_click=lambda: page_step.set(4),
                         )
             with rv.StepperContent(step=4):
+                # Show the chat interface once the some data has been ingested.
                 with rv.Card(elevation=0):
                     with rv.CardActions():
                         solara.Button(
@@ -232,9 +242,11 @@ def Page():
                             icon_name="mdi-page-previous",
                             on_click=lambda: page_step.set(3),
                         )
+                # TODO: The chat interface needs to be dynamically resized if sidebar is open.
                 chat_uic.ChatInterface()
 
 
 routes = [
+    # Define the main route for the app with the custom layout.
     solara.Route(path="/", component=Page, label="TLDRLC", layout=CustomLayout),
 ]

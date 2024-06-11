@@ -20,7 +20,10 @@ from langfuse.llama_index import LlamaIndexCallbackHandler
 
 
 class TLDRLCLangfuseCallbackHandler(LlamaIndexCallbackHandler):
-    """Custom Langfuse callback handler."""
+    """Custom Langfuse callback handler, which does nothing more than
+    calling its superclass methods.
+
+    WARNING: This class could be deprecated in the future."""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

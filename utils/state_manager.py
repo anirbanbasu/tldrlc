@@ -81,7 +81,10 @@ status_message_show: solara.Reactive[bool] = solara.reactive(False)
 
 
 def show_status_message(message: str, colour: str = "info", timeout: int = 4):
-    """Show a status message on the page."""
+    """
+    Update the reactive variables to be able to display a status message on a page. The
+    message can be displayed in the form of a toast or banner.
+    """
     status_message.value = message
     status_message_colour.value = colour
     status_message_show.value = True
@@ -204,10 +207,13 @@ global_llamaindex_storage_context: solara.Reactive[StorageContext] = solara.reac
 global_llamaindex_chat_store: solara.Reactive[BaseChatStore] = solara.reactive(None)
 global_llamaindex_chat_memory: solara.Reactive[ChatMemoryBuffer] = solara.reactive(None)
 
+
 """ Chatbot objects """
 
 
 class MessageDict(TypedDict):
+    """A dictionary representing a chat message that is displayed to the user."""
+
     role: str
     content: str
     timestamp: str
@@ -227,17 +233,26 @@ global_chat_messages: solara.Reactive[List[MessageDict]] = solara.reactive([])
 # setting's value to the corresponding environment variable or a default value. This could be simplified
 # by creating a helper function that encapsulates this pattern. (GitHub Copilot suggestion.)
 
-# def set_global_setting(setting: solara.Reactive, env_key: str, default_value: str, type_cast=str):
-#     """
-#     Sets a global setting's value to the corresponding environment variable or a default value.
 
-#     Args:
-#         setting (solara.Reactive variable): The global setting to set.
-#         env_key (str): The key of the environment variable.
-#         default_value (str): The default value to use if the environment variable is not set.
-#         type_cast (type): The type to cast the environment variable value to. Defaults to str.
-#     """
-#     setting.value = type_cast(os.getenv(env_key, default_value))
+def set_global_setting(
+    setting: solara.Reactive, env_key: str, default_value: str = None, type_cast=str
+):
+    """
+    Sets a global setting's value to the corresponding environment variable or a default value.
+
+    Args:
+        setting (solara.Reactive variable): The global setting to set.
+        env_key (str): The key of the environment variable.
+        default_value (str): The default value to use if the environment variable is not set.
+        type_cast (type): The type to cast the environment variable value to. Defaults to str.
+    """
+    if type_cast == "bool":
+        setting.value = type_cast(
+            os.getenv(env_key, default_value).lower() in ["true", "yes", "t", "y", "on"]
+        )
+    else:
+        setting.value = type_cast(os.getenv(env_key, default_value))
+
 
 # Usage
 # set_global_setting(global_settings__openai_api_key, constants.ENV_KEY_OPENAI_API_KEY, None)
@@ -335,10 +350,14 @@ def update_llm_settings(callback_data: Any = None):
                 system_prompt=global_settings__llm_system_message.value,
             )
             Settings.embed_model = CohereEmbedding(
+                # TODO: Should this be cohere_api_key or api_key?
                 cohere_api_key=global_settings__cohere_api_key.value,
                 input_type="search_query",
             )
-            global_settings__llm_provider_notice.value = "Cohere is being used as the language model provider. Ensure that you have set the Cohere API key correctly from the Settings page."
+            global_settings__llm_provider_notice.value = """
+                Cohere is being used as the language model provider. 
+                Ensure that you have set the Cohere API key correctly from the Settings page.
+                """
         case constants.LLM_PROVIDER_OPENAI:
             Settings.llm = OpenAI(
                 api_key=global_settings__openai_api_key.value,
@@ -349,7 +368,10 @@ def update_llm_settings(callback_data: Any = None):
             Settings.embed_model = OpenAIEmbedding(
                 api_key=global_settings__openai_api_key.value,
             )
-            global_settings__llm_provider_notice.value = "Open AI is being used as the language model provider. Ensure that you have set the Open AI API key correctly from the Settings page."
+            global_settings__llm_provider_notice.value = """
+                Open AI is being used as the language model provider. 
+                Ensure that you have set the Open AI API key correctly from the Settings page.
+                """
         case constants.LLM_PROVIDER_LLAMAFILE:
             Settings.llm = Llamafile(
                 base_url=global_settings__llamafile_url.value,
@@ -360,6 +382,7 @@ def update_llm_settings(callback_data: Any = None):
             Settings.embed_model = LlamafileEmbedding(
                 base_url=global_settings__llamafile_url.value,
             )
+            global_settings__llm_provider_notice.value = constants.EMPTY_STRING
         case constants.LLM_PROVIDER_OLLAMA:
             Settings.llm = Ollama(
                 model=global_settings__ollama_model.value,
@@ -377,6 +400,7 @@ def update_llm_settings(callback_data: Any = None):
 
 
 def update_chatbot_settings(callback_data: Any = None):
+    """Update the chatbot settings."""
     if global_llamaindex_chat_store.value is None:
         global_llamaindex_chat_store.value = SimpleChatStore()
 
@@ -392,6 +416,7 @@ def update_chatbot_settings(callback_data: Any = None):
 
 
 def update_graph_storage_context(gs: Neo4jPropertyGraphStore = None):
+    """Update the graph storage context."""
     if not global_settings__neo4j_disable.value:
         if gs is None:
             gs = Neo4jPropertyGraphStore(
@@ -407,6 +432,7 @@ def update_graph_storage_context(gs: Neo4jPropertyGraphStore = None):
         else:
             global_llamaindex_storage_context.value.property_graph_store = gs
     else:
+        # Note that the SimplePropertyGraphStore does not support all the features of Neo4j.
         if global_llamaindex_storage_context.value is None:
             global_llamaindex_storage_context.value = StorageContext.from_defaults(
                 property_graph_store=SimplePropertyGraphStore()
@@ -418,6 +444,7 @@ def update_graph_storage_context(gs: Neo4jPropertyGraphStore = None):
 
 
 def update_index_documents_vector_storage_context():
+    """Update the document and vector storage context."""
     if not global_settings__redis_disable.value:
         global_cache__ingestion.value = RedisCache(
             redis_uri=global_settings__redis_url.value,
@@ -468,113 +495,136 @@ def update_index_documents_vector_storage_context():
 
 def initialise_default_settings():
     """Load the global settings from the environment variables."""
+    # Load the settings only once.
     if not global_settings_initialised.value:
         """ Load the environment variables from the .env file, if present. """
         load_dotenv()
 
         """ Language model settings """
-        global_settings__language_model_provider.value = os.getenv(
-            constants.ENV_KEY_LLM_PROVIDER, constants.DEFAULT_SETTING_LLM_PROVIDER
+        set_global_setting(
+            global_settings__language_model_provider,
+            constants.ENV_KEY_LLM_PROVIDER,
+            constants.DEFAULT_SETTING_LLM_PROVIDER,
         )
 
-        global_settings__cohere_api_key.value = os.getenv(
-            constants.ENV_KEY_COHERE_API_KEY, None
+        set_global_setting(
+            global_settings__cohere_api_key, constants.ENV_KEY_COHERE_API_KEY
         )
-        global_settings__cohere_model.value = os.getenv(
-            constants.ENV_KEY_COHERE_MODEL, constants.DEFAULT_SETTING_COHERE_MODEL
+
+        set_global_setting(
+            global_settings__cohere_model,
+            constants.ENV_KEY_COHERE_MODEL,
+            constants.DEFAULT_SETTING_COHERE_MODEL,
         )
-        global_settings__openai_model.value = os.getenv(
-            constants.ENV_KEY_OPENAI_MODEL, constants.DEFAULT_SETTING_OPENAI_MODEL
+
+        set_global_setting(
+            global_settings__openai_api_key, constants.ENV_KEY_OPENAI_API_KEY
         )
-        global_settings__openai_api_key.value = os.getenv(
-            constants.ENV_KEY_OPENAI_API_KEY, None
+
+        set_global_setting(
+            global_settings__openai_model,
+            constants.ENV_KEY_OPENAI_MODEL,
+            constants.DEFAULT_SETTING_OPENAI_MODEL,
         )
-        global_settings__llamafile_url.value = os.getenv(
-            constants.ENV_KEY_LLAMAFILE_URL, constants.DEFAULT_SETTING_LLAMAFILE_URL
+
+        set_global_setting(
+            global_settings__llamafile_url,
+            constants.ENV_KEY_LLAMAFILE_URL,
+            constants.DEFAULT_SETTING_LLAMAFILE_URL,
         )
-        global_settings__ollama_url.value = os.getenv(
-            constants.ENV_KEY_OLLAMA_URL, constants.DEFAULT_SETTING_OLLAMA_URL
+
+        set_global_setting(
+            global_settings__ollama_url,
+            constants.ENV_KEY_OLLAMA_URL,
+            constants.DEFAULT_SETTING_OLLAMA_URL,
         )
-        global_settings__ollama_model.value = os.getenv(
-            constants.ENV_KEY_OLLAMA_MODEL, constants.DEFAULT_SETTING_OLLAMA_MODEL
+
+        set_global_setting(
+            global_settings__ollama_model,
+            constants.ENV_KEY_OLLAMA_MODEL,
+            constants.DEFAULT_SETTING_OLLAMA_MODEL,
         )
-        global_settings__llm_temperature.value = float(
-            os.getenv(
-                constants.ENV_KEY_LLM_TEMPERATURE,
-                constants.DEFAULT_SETTING_LLM_TEMPERATURE,
-            )
+
+        set_global_setting(
+            global_settings__llm_temperature,
+            constants.ENV_KEY_LLM_TEMPERATURE,
+            constants.DEFAULT_SETTING_LLM_TEMPERATURE,
+            float,
         )
-        global_settings__llm_request_timeout.value = int(
-            os.getenv(
-                constants.ENV_KEY_LLM_REQUEST_TIMEOUT,
-                constants.DEFAULT_SETTING_LLM_REQUEST_TIMEOUT,
-            )
+
+        set_global_setting(
+            global_settings__llm_request_timeout,
+            constants.ENV_KEY_LLM_REQUEST_TIMEOUT,
+            constants.DEFAULT_SETTING_LLM_REQUEST_TIMEOUT,
+            int,
         )
-        global_settings__llm_system_message.value = os.getenv(
+
+        set_global_setting(
+            global_settings__llm_system_message,
             constants.ENV_KEY_LLM_SYSTEM_MESSAGE,
             constants.DEFAULT_SETTING_LLM_SYSTEM_MESSAGE,
         )
 
         """ Data ingestion settings """
 
-        global_settings__data_ingestion_chunk_size.value = int(
-            os.getenv(
-                constants.ENV_KEY_DI_CHUNK_SIZE,
-                constants.DEFAULT_SETTING_DI_CHUNK_SIZE,
-            )
+        set_global_setting(
+            global_settings__data_ingestion_chunk_size,
+            constants.ENV_KEY_DI_CHUNK_SIZE,
+            constants.DEFAULT_SETTING_DI_CHUNK_SIZE,
+            int,
         )
-        global_settings__data_ingestion_chunk_overlap.value = int(
-            os.getenv(
-                constants.ENV_KEY_DI_CHUNK_OVERLAP,
-                constants.DEFAULT_SETTING_DI_CHUNK_OVERLAP,
-            )
+
+        set_global_setting(
+            global_settings__data_ingestion_chunk_overlap,
+            constants.ENV_KEY_DI_CHUNK_OVERLAP,
+            constants.DEFAULT_SETTING_DI_CHUNK_OVERLAP,
+            int,
         )
-        global_settings__di_enable_title_extractor.value = bool(
-            os.getenv(
-                constants.ENV_KEY_DI_ENABLE_TITLE_EXTRACTOR,
-                constants.DEFAULT_SETTING_DI_ENABLE_TITLE_EXTRACTOR,
-            ).lower()
-            in ["true", "yes", "t", "y", "on"]
+
+        set_global_setting(
+            global_settings__di_enable_title_extractor,
+            constants.ENV_KEY_DI_ENABLE_TITLE_EXTRACTOR,
+            constants.DEFAULT_SETTING_DI_ENABLE_TITLE_EXTRACTOR,
+            bool,
         )
-        global_settings__di_enable_title_extractor_nodes.value = int(
-            os.getenv(
-                constants.ENV_KEY_DI_TITLE_EXTRACTOR_NODES,
-                constants.DEFAULT_SETTING_DI_TITLE_EXTRACTOR_NODES,
-            )
+        set_global_setting(
+            global_settings__di_enable_title_extractor_nodes,
+            constants.ENV_KEY_DI_TITLE_EXTRACTOR_NODES,
+            constants.DEFAULT_SETTING_DI_TITLE_EXTRACTOR_NODES,
+            int,
         )
-        global_settings__di_enable_keyword_extractor.value = bool(
-            os.getenv(
-                constants.ENV_KEY_DI_ENABLE_KEYWORD_EXTRACTOR,
-                constants.DEFAULT_SETTING_DI_ENABLE_KEYWORD_EXTRACTOR,
-            ).lower()
-            in ["true", "yes", "t", "y", "on"]
+        set_global_setting(
+            global_settings__di_enable_keyword_extractor,
+            constants.ENV_KEY_DI_ENABLE_KEYWORD_EXTRACTOR,
+            constants.DEFAULT_SETTING_DI_ENABLE_KEYWORD_EXTRACTOR,
+            bool,
         )
-        global_settings__di_enable_keyword_extractor_keywords.value = int(
-            os.getenv(
-                constants.ENV_KEY_DI_KEYWORD_EXTRACTOR_KEYWORDS,
-                constants.DEFAULT_SETTING_DI_KEYWORD_EXTRACTOR_KEYWORDS,
-            )
+        set_global_setting(
+            global_settings__di_enable_keyword_extractor_keywords,
+            constants.ENV_KEY_DI_KEYWORD_EXTRACTOR_KEYWORDS,
+            constants.DEFAULT_SETTING_DI_KEYWORD_EXTRACTOR_KEYWORDS,
+            int,
         )
-        global_settings__di_enable_qa_extractor.value = bool(
-            os.getenv(
-                constants.ENV_KEY_DI_ENABLE_QA_EXTRACTOR,
-                constants.DEFAULT_SETTING_DI_ENABLE_QA_EXTRACTOR,
-            ).lower()
-            in ["true", "yes", "t", "y", "on"]
+        set_global_setting(
+            global_settings__di_enable_qa_extractor,
+            constants.ENV_KEY_DI_ENABLE_QA_EXTRACTOR,
+            constants.DEFAULT_SETTING_DI_ENABLE_QA_EXTRACTOR,
+            bool,
         )
-        global_settings__di_enable_qa_extractor_questions.value = int(
-            os.getenv(
-                constants.ENV_KEY_DI_QA_EXTRACTOR_QUESTIONS,
-                constants.DEFAULT_SETTING_DI_QA_EXTRACTOR_QUESTIONS,
-            )
+        set_global_setting(
+            global_settings__di_enable_qa_extractor_questions,
+            constants.ENV_KEY_DI_QA_EXTRACTOR_QUESTIONS,
+            constants.DEFAULT_SETTING_DI_QA_EXTRACTOR_QUESTIONS,
+            int,
         )
-        global_settings__di_enable_summary_extractor.value = bool(
-            os.getenv(
-                constants.ENV_KEY_DI_ENABLE_SUMMARY_EXTRACTOR,
-                constants.DEFAULT_SETTING_DI_ENABLE_SUMMARY_EXTRACTOR,
-            ).lower()
-            in ["true", "yes", "t", "y", "on"]
+        set_global_setting(
+            global_settings__di_enable_summary_extractor,
+            constants.ENV_KEY_DI_ENABLE_SUMMARY_EXTRACTOR,
+            constants.DEFAULT_SETTING_DI_ENABLE_SUMMARY_EXTRACTOR,
+            bool,
         )
+
+        # TODO: Update the set_global_setting method to be able to split text values into lists.
         global_settings__di_enable_summary_extractor_summaries.value = os.getenv(
             constants.ENV_KEY_DI_SUMMARY_EXTRACTOR_SUMMARIES,
             constants.DEFAULT_SETTING_DI_SUMMARY_EXTRACTOR_SUMMARIES,
@@ -582,62 +632,75 @@ def initialise_default_settings():
 
         """ Index and chat settings """
 
-        global_settings__index_memory_token_limit.value = int(
-            os.getenv(
-                constants.ENV_KEY_INDEX_MEMORY_TOKEN_LIMIT,
-                constants.DEFAULT_SETTING_INDEX_MEMORY_TOKEN_LIMIT,
-            )
+        set_global_setting(
+            global_settings__index_memory_token_limit,
+            constants.ENV_KEY_INDEX_MEMORY_TOKEN_LIMIT,
+            constants.DEFAULT_SETTING_INDEX_MEMORY_TOKEN_LIMIT,
+            int,
         )
-        global_settings__index_max_triplets_per_chunk.value = int(
-            os.getenv(
-                constants.ENV_KEY_INDEX_MAX_TRIPLETS_PER_CHUNK,
-                constants.DEFAULT_SETTING_INDEX_MAX_TRIPLETS_PER_CHUNK,
-            )
+
+        set_global_setting(
+            global_settings__index_max_triplets_per_chunk,
+            constants.ENV_KEY_INDEX_MAX_TRIPLETS_PER_CHUNK,
+            constants.DEFAULT_SETTING_INDEX_MAX_TRIPLETS_PER_CHUNK,
+            int,
         )
-        global_settings__index_include_embeddings.value = bool(
-            os.getenv(
-                constants.ENV_KEY_INDEX_INCLUDE_EMBEDDINGS,
-                constants.DEFAULT_SETTING_INDEX_INCLUDE_EMBEDDINGS,
-            ).lower()
-            in ["true", "yes", "t", "y", "on"]
+        set_global_setting(
+            global_settings__index_include_embeddings,
+            constants.ENV_KEY_INDEX_INCLUDE_EMBEDDINGS,
+            constants.DEFAULT_SETTING_INDEX_INCLUDE_EMBEDDINGS,
+            bool,
         )
-        global_settings__index_chat_mode.value = os.getenv(
+
+        set_global_setting(
+            global_settings__index_chat_mode,
             constants.ENV_KEY_INDEX_CHAT_MODE,
             constants.DEFAULT_SETTING_INDEX_CHAT_MODE,
         )
 
         """ Neo4j settings """
-        global_settings__neo4j_disable.value = bool(
-            os.getenv(
-                constants.ENV_KEY_NEO4J_DISABLE, constants.DEFAULT_SETTING_NEO4J_DISABLE
-            ).lower()
-            in ["true", "yes", "t", "y", "on"]
+        set_global_setting(
+            global_settings__neo4j_disable,
+            constants.ENV_KEY_NEO4J_DISABLE,
+            constants.DEFAULT_SETTING_NEO4J_DISABLE,
+            bool,
         )
-        global_settings__neo4j_url.value = os.getenv(
-            constants.ENV_KEY_NEO4J_URL, constants.DEFAULT_SETTING_NEO4J_URL
+        set_global_setting(
+            global_settings__neo4j_url,
+            constants.ENV_KEY_NEO4J_URL,
+            constants.DEFAULT_SETTING_NEO4J_URL,
         )
-        global_settings__neo4j_username.value = os.getenv(
-            constants.ENV_KEY_NEO4J_USERNAME, constants.DEFAULT_SETTING_NEO4J_USERNAME
+        set_global_setting(
+            global_settings__neo4j_username,
+            constants.ENV_KEY_NEO4J_USERNAME,
+            constants.DEFAULT_SETTING_NEO4J_USERNAME,
         )
-        global_settings__neo4j_password.value = os.getenv(
-            constants.ENV_KEY_NEO4J_PASSWORD, None
+        set_global_setting(
+            global_settings__neo4j_password,
+            constants.ENV_KEY_NEO4J_PASSWORD,
         )
-        global_settings__neo4j_db_name.value = os.getenv(
-            constants.ENV_KEY_NEO4J_DB_NAME, constants.DEFAULT_SETTING_NEO4J_DB_NAME
+        set_global_setting(
+            global_settings__neo4j_db_name,
+            constants.ENV_KEY_NEO4J_DB_NAME,
+            constants.DEFAULT_SETTING_NEO4J_DB_NAME,
         )
 
         """ Redis settings """
-        global_settings__redis_disable.value = bool(
-            os.getenv(
-                constants.ENV_KEY_REDIS_DISABLE, constants.DEFAULT_SETTING_REDIS_DISABLE
-            ).lower()
-            in ["true", "yes", "t", "y", "on"]
+        set_global_setting(
+            global_settings__redis_disable,
+            constants.ENV_KEY_REDIS_DISABLE,
+            constants.DEFAULT_SETTING_REDIS_DISABLE,
+            bool,
         )
-        global_settings__redis_url.value = os.getenv(
-            constants.ENV_KEY_REDIS_URL, constants.DEFAULT_SETTING_REDIS_URL
+        set_global_setting(
+            global_settings__redis_url,
+            constants.ENV_KEY_REDIS_URL,
+            constants.DEFAULT_SETTING_REDIS_URL,
         )
-        global_settings__redis_namespace.value = os.getenv(
-            constants.ENV_KEY_REDIS_NAMESPACE, constants.DEFAULT_SETTING_REDIS_NAMESPACE
+        set_global_setting(
+            global_settings__redis_namespace,
+            constants.ENV_KEY_REDIS_NAMESPACE,
+            constants.DEFAULT_SETTING_REDIS_NAMESPACE,
         )
 
         setup_langfuse()
@@ -648,9 +711,11 @@ def initialise_default_settings():
         update_graph_storage_context()
         update_index_documents_vector_storage_context()
 
+        # Set this to true so that the settings are not loaded again.
         global_settings_initialised.value = True
 
 
+# TODO: Not being used and will be removed in the future.
 corrective_background_colour: solara.Reactive[str] = solara.reactive(
     constants.EMPTY_STRING
 )
@@ -675,6 +740,7 @@ def set_theme_colours():
     solara.lab.theme.themes.dark.info = "#00bcd4"
     solara.lab.theme.themes.dark.success = "#8bc34a"
 
+    # TODO: Not being used and will be removed in the future.
     corrective_background_colour.value = (
         solara.lab.theme.themes.dark.secondary
         if solara.lab.use_dark_effective()

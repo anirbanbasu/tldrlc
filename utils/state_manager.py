@@ -229,13 +229,13 @@ global_chat_engine: solara.Reactive[BaseChatEngine] = solara.reactive(None)
 global_chat_messages: solara.Reactive[List[MessageDict]] = solara.reactive([])
 
 
-# Looking at the provided code, it seems like you're repeating the same pattern of setting a global
-# setting's value to the corresponding environment variable or a default value. This could be simplified
-# by creating a helper function that encapsulates this pattern. (GitHub Copilot suggestion.)
-
-
 def set_global_setting(
-    setting: solara.Reactive, env_key: str, default_value: str = None, type_cast=str
+    setting: solara.Reactive,
+    env_key: str,
+    default_value: str = None,
+    type_cast=str,
+    convert_to_list=False,
+    list_split_char=constants.SPACE_STRING,
 ):
     """
     Sets a global setting's value to the corresponding environment variable or a default value.
@@ -243,26 +243,29 @@ def set_global_setting(
     Args:
         setting (solara.Reactive variable): The global setting to set.
         env_key (str): The key of the environment variable.
-        default_value (str): The default value to use if the environment variable is not set.
+        default_value (str): The default value to use if the environment variable is not set. Defaults to None.
         type_cast (type): The type to cast the environment variable value to. Defaults to str.
+        convert_to_list (bool): Whether to convert the cast value to a list. Defaults to False.
+        list_split_char (str): The character to split the value into a list. Defaults to " ".
     """
-    if type_cast == "bool":
-        setting.value = type_cast(
-            os.getenv(env_key, default_value).lower() in ["true", "yes", "t", "y", "on"]
-        )
+
+    parsed_value = None
+    if type_cast == bool:
+        parsed_value = os.getenv(env_key, default_value).lower() in [
+            "true",
+            "yes",
+            "t",
+            "y",
+            "on",
+        ]
     else:
-        setting.value = type_cast(os.getenv(env_key, default_value))
+        parsed_value = os.getenv(env_key, default_value)
 
-
-# Usage
-# set_global_setting(global_settings__openai_api_key, constants.ENV_KEY_OPENAI_API_KEY, None)
-# set_global_setting(global_settings__llamafile_url, constants.ENV_KEY_LLAMAFILE_URL, constants.DEFAULT_SETTING_LLAMAFILE_URL)
-# set_global_setting(global_settings__ollama_url, constants.ENV_KEY_OLLAMA_URL, constants.DEFAULT_SETTING_OLLAMA_URL)
-# set_global_setting(global_settings__ollama_model, constants.ENV_KEY_OLLAMA_MODEL, constants.DEFAULT_SETTING_OLLAMA_MODEL)
-# set_global_setting(global_settings__llm_temperature, constants.ENV_KEY_LLM_TEMPERATURE, constants.DEFAULT_SETTING_LLM_TEMPERATURE, float)
-# set_global_setting(global_settings__llm_request_timeout, constants.ENV_KEY_LLM_REQUEST_TIMEOUT, constants.DEFAULT_SETTING_LLM_REQUEST_TIMEOUT, int)
-# set_global_setting(global_settings__llm_system_message, constants.ENV_KEY_LLM_SYSTEM_MESSAGE, constants.DEFAULT_SETTING_LLM_SYSTEM_MESSAGE)
-# set_global_setting(global_settings__data_ingestion_chunk_size, constants.ENV_KEY_DI_CHUNK_SIZE, constants.DEFAULT_SETTING_DI_CHUNK_SIZE, int)
+    setting.value = (
+        type_cast(parsed_value)
+        if not convert_to_list
+        else [type_cast(v) for v in parsed_value.split(list_split_char)]
+    )
 
 
 def md5_hash(some_string):
@@ -356,7 +359,7 @@ def update_llm_settings(callback_data: Any = None):
             )
             global_settings__llm_provider_notice.value = """
                 Cohere is being used as the language model provider. 
-                Ensure that you have set the Cohere API key correctly from the Settings page.
+                Ensure that you have set the Cohere API key correctly!
                 """
         case constants.LLM_PROVIDER_OPENAI:
             Settings.llm = OpenAI(
@@ -370,7 +373,7 @@ def update_llm_settings(callback_data: Any = None):
             )
             global_settings__llm_provider_notice.value = """
                 Open AI is being used as the language model provider. 
-                Ensure that you have set the Open AI API key correctly from the Settings page.
+                Ensure that you have set the Open AI API key correctly!
                 """
         case constants.LLM_PROVIDER_LLAMAFILE:
             Settings.llm = Llamafile(
@@ -624,11 +627,13 @@ def initialise_default_settings():
             bool,
         )
 
-        # TODO: Update the set_global_setting method to be able to split text values into lists.
-        global_settings__di_enable_summary_extractor_summaries.value = os.getenv(
+        set_global_setting(
+            global_settings__di_enable_summary_extractor_summaries,
             constants.ENV_KEY_DI_SUMMARY_EXTRACTOR_SUMMARIES,
             constants.DEFAULT_SETTING_DI_SUMMARY_EXTRACTOR_SUMMARIES,
-        ).split()
+            str,
+            convert_to_list=True,
+        )
 
         """ Index and chat settings """
 

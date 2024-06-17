@@ -44,14 +44,24 @@ logging.basicConfig(
 )
 
 # Reactive variables
+
+# These next two variables are useful to update the trace and observation w.r.t. the last chatbot output.
 langfuse_last_trace_id: solara.Reactive[str] = solara.Reactive(constants.EMPTY_STRING)
 langfuse_last_observation_id: solara.Reactive[str] = solara.Reactive(
     constants.EMPTY_STRING
 )
+
 chat_session_id: solara.Reactive[str] = solara.Reactive(constants.EMPTY_STRING)
+
+# The message that the user sends every time to the chatbot.
 user_chat_input: solara.Reactive[str] = solara.Reactive(constants.EMPTY_STRING)
+# TODO: We are not using this yet.
 exported_chat_json: solara.Reactive[str] = solara.Reactive(constants.EMPTY_STRING)
+
+# The last response from the chat engine.
 last_response_ai: solara.Reactive[StreamingAgentChatResponse] = solara.Reactive(None)
+
+# User feedback data for submitting to Langfuse.
 ai_response_feedback_score: solara.Reactive[float] = solara.Reactive(0.0)
 ai_response_feedback_comment: solara.Reactive[str] = solara.Reactive(
     constants.EMPTY_STRING
@@ -61,7 +71,7 @@ ai_response_feedback_comment: solara.Reactive[str] = solara.Reactive(
 def stream_wrapper(streaming_response):
     """Wrapper for the streaming response from the chat engine."""
     for token in streaming_response.response_gen:
-        # Filter out symbols that break formatting
+        # Filter out symbols that break formatting.
         if token.strip() == "$":
             # Escape the $ sign, otherwise LaTeX formatting will be triggered!
             yield token.replace("$", "${$}")
@@ -71,14 +81,17 @@ def stream_wrapper(streaming_response):
 
 def clear_chat_history():
     """Clear the chat history."""
+    # TODO: This method is not being used.
     sm.global_chat_messages.value.clear()
 
 
 def no_chat_engine_message():
+    """Show a message when the chat engine is not available."""
+    # TODO: This used to be useful when the chat engine was accessible before data ingestion. Remove it, maybe?
     sm.global_chat_messages.value = [
         {
             constants.CHAT_KEY_ROLE: constants.CHAT_KEY_VALUE_ASSISTANT,
-            constants.CHAT_KEY_CONTENT: "_The chat engine is **not available**. Please check the settings and then ingest some data from the Ingest page to initialise the chat engine._",
+            constants.CHAT_KEY_CONTENT: "_The chat engine is **not available**. Please check the settings and then ingest some data to initialise the chat engine._",
             constants.CHAT_KEY_TIMESTAMP: f"{datetime.datetime.now()}",
             constants.CHAT_KEY_LLM_PROVIDER: "TLDRLC",
             constants.CHAT_KEY_LLM_MODEL_NAME: "System",
@@ -88,12 +101,14 @@ def no_chat_engine_message():
 
 @task(prefer_threaded=True)
 def submit_feedback(callback_arg=None):
+    """Submit user feedback to Langfuse."""
     try:
         if (
             langfuse_last_trace_id.value is None
             or langfuse_last_observation_id.value is None
         ):
             raise ValueError("No associated Langfuse trace and observation was found.")
+        # Add the user feedback to the last trace and observation.
         sm.global_client_langfuse_lowlevel.value.score(
             name="Human feedback",
             value=ai_response_feedback_score.value,
@@ -120,6 +135,7 @@ def submit_feedback(callback_arg=None):
 
 
 def add_chunk_to_ai_message(chunk: str):
+    """Incrementally add chunk to the chatbot generated message as it is being streamed."""
     sm.global_chat_messages.value = [
         *sm.global_chat_messages.value[:-1],
         {
@@ -140,6 +156,7 @@ def add_chunk_to_ai_message(chunk: str):
 @task(prefer_threaded=True)
 @observe()
 def ask_tldrlc(callback_arg=None) -> bool:
+    """Send the user message to the chat engine."""
     result = False
     langfuse_last_trace_id.value = None
     if sm.global_chat_engine.value is not None:
@@ -182,6 +199,7 @@ def ask_tldrlc(callback_arg=None) -> bool:
 
 @observe(as_type="generation")
 def call_chat_engine() -> bool:
+    """Call the chat engine to generate a response."""
     langfuse_last_observation_id.value = None
     has_unanswered_messages = (
         len(sm.global_chat_messages.value) > 0
@@ -207,8 +225,6 @@ def call_chat_engine() -> bool:
                 constants.CHAT_KEY_LLM_MODEL_NAME: Settings.llm.metadata.model_name[:],
             },
         ]
-        # for node in last_response_ai.value.source_nodes:
-        #     logger.warning(f"Source node: {node.metadata}")
         for chunk in last_response_ai.value.response_gen:
             add_chunk_to_ai_message(chunk)
 

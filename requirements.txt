@@ -38,7 +38,7 @@ pymdown-extensions==10.8.1
 pytest==8.2.2
 python-dotenv==1.0.1
 sentence-transformers==3.0.1
-solara==1.33.0
+solara==1.35.1
 starlette==0.37.2
 toml==0.10.2
 trafilatura==1.10.0

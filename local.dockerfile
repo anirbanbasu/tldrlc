@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # Pull Python 3.12 on Debian Bookworm slim image
-FROM python:3.12.3-slim-bookworm
+FROM python:3.12.5-slim-bookworm
 
 # Upgrade and install basic packages
 RUN apt-get update && apt-get -y upgrade && apt-get -y install nano build-essential && apt-get -y autoremove
